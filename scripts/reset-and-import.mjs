@@ -61,6 +61,38 @@ function normalizeKey(...parts) {
     .trim();
 }
 
+const normalizeWhitespace = (value) =>
+  String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeAccountIdentifier = (value) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/gi, "")
+    .toUpperCase();
+
+const buildImportFingerprint = ({
+  accountIdentifier,
+  date,
+  amountMinor,
+  description,
+  counterparty,
+  notifications,
+}) => {
+  const sanitize = (value) => normalizeWhitespace(value ?? "").toLowerCase();
+  const parts = [
+    normalizeAccountIdentifier(accountIdentifier),
+    date.toISOString(),
+    amountMinor.toString(),
+    sanitize(description),
+    sanitize(counterparty),
+    sanitize(notifications),
+  ];
+  return hashString(parts.join("|"));
+};
+
 const trimOrNull = (value) => {
   if (value == null) return null;
   const trimmed = String(value).trim();
@@ -279,6 +311,17 @@ const userId =
       "NL89INGB0006369960",
     ].join("|");
     const hash = hashString(hashInput);
+    const amountMinor = BigInt(Math.round(Math.abs(amount) * 100));
+    const counterparty = trimOrNull(rowData["Counterparty"] ?? rowData["counterparty"]);
+    const notifications = trimOrNull(rowData["Notifications"] ?? rowData["Notification"]);
+    const importFingerprint = buildImportFingerprint({
+      accountIdentifier: accountInfo?.identifier ?? DEFAULT_ACCOUNT_IDENTIFIER,
+      date,
+      amountMinor,
+      description,
+      counterparty,
+      notifications,
+    });
 
     return {
       base: {
@@ -287,11 +330,12 @@ const userId =
         description,
         normalizedKey,
         // Store amountMinor as positive minor units; direction holds the sign semantics
-        amountMinor: BigInt(Math.round(Math.abs(amount) * 100)), // Prisma BigInt
+        amountMinor, // Prisma BigInt
         currency: "EUR",
         direction,
         source: "Excel Import",
         hash,
+        importFingerprint,
         sourceFile: path.basename(file),
         classificationSource: TransactionClassificationSource.manual,
         createdAt: new Date(),
