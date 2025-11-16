@@ -19,7 +19,7 @@ const readRawField = (rawRecord: Record<string, unknown>, key: string): unknown 
   return null;
 };
 
-const normalizeComparableText = (value: string | null | undefined): string => {
+export const normalizeComparableText = (value: string | null | undefined): string => {
   if (!value) return '';
   const trimmed = normalizeWhitespace(value);
   if (!trimmed) return '';
@@ -28,6 +28,19 @@ const normalizeComparableText = (value: string | null | undefined): string => {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+};
+
+const extractCounterpartyFromRaw = (raw: unknown): string | null => {
+  if (!isPlainObject(raw)) return null;
+  const direct =
+    readRawField(raw, 'Counterparty') ??
+    readRawField(raw, 'counterparty') ??
+    readRawField(raw, 'IBAN') ??
+    readRawField(raw, 'iban');
+  if (typeof direct === 'string') {
+    return direct;
+  }
+  return null;
 };
 
 const toSignedAmount = (amountMinor: bigint | null, direction?: Direction | null): {
@@ -103,7 +116,10 @@ export const normalizeMatchableTransaction = (
     ? normalizeAccountIdentifier(input.accountIdentifier)
     : '';
 
-  const counterparty = normalizeComparableText(input.counterparty ?? '');
+  let counterparty = normalizeComparableText(input.counterparty ?? '');
+  if (!counterparty) {
+    counterparty = normalizeComparableText(extractCounterpartyFromRaw(input.raw ?? null));
+  }
   const notificationSource =
     input.notifications ?? extractNotificationFromRaw(input.raw ?? null) ?? '';
   const notifications = normalizeComparableText(notificationSource);
@@ -151,26 +167,57 @@ export const buildLedgerMatchCandidates = (sources: LedgerMatchSource[]): Ledger
 type ExactMatchIndex = Map<string, LedgerMatchCandidate>;
 type FuzzyMatchIndex = Map<string, LedgerMatchCandidate[]>;
 
-const buildExactKey = (normalized: NormalizedMatchFields): string =>
+const buildExactKey = (
+  normalized: NormalizedMatchFields,
+  options: { includeCounterparty: boolean; includeNotifications: boolean },
+): string =>
   [
     normalized.description,
     normalized.signedAmountMinor,
     normalized.direction,
     normalized.accountIdentifier,
-    normalized.counterparty,
-    normalized.notifications,
+    options.includeCounterparty ? normalized.counterparty : '',
+    options.includeNotifications ? normalized.notifications : '',
+    options.includeCounterparty ? 'cp:1' : 'cp:0',
+    options.includeNotifications ? 'nt:1' : 'nt:0',
   ].join(KEY_SEPARATOR);
+
+const EXACT_KEY_VARIANTS: Array<{ includeCounterparty: boolean; includeNotifications: boolean }> = [
+  { includeCounterparty: true, includeNotifications: true },
+  { includeCounterparty: true, includeNotifications: false },
+  { includeCounterparty: false, includeNotifications: true },
+  { includeCounterparty: false, includeNotifications: false },
+];
+
+const buildExactKeyVariants = (normalized: NormalizedMatchFields): string[] => {
+  const keys: string[] = [];
+  EXACT_KEY_VARIANTS.forEach((variant) => {
+    if (variant.includeCounterparty && !normalized.counterparty) {
+      return;
+    }
+    if (variant.includeNotifications && !normalized.notifications) {
+      return;
+    }
+    keys.push(buildExactKey(normalized, variant));
+  });
+  if (!keys.length) {
+    keys.push(buildExactKey(normalized, { includeCounterparty: false, includeNotifications: false }));
+  }
+  return keys;
+};
 
 export const buildExactMatchIndex = (
   candidates: LedgerMatchCandidate[],
 ): ExactMatchIndex => {
   const index: ExactMatchIndex = new Map();
   candidates.forEach((candidate) => {
-    const key = buildExactKey(candidate.normalized);
-    const existing = index.get(key);
-    if (!existing || candidate.createdAt > existing.createdAt) {
-      index.set(key, candidate);
-    }
+    const keys = buildExactKeyVariants(candidate.normalized);
+    keys.forEach((key) => {
+      const existing = index.get(key);
+      if (!existing || candidate.createdAt > existing.createdAt) {
+        index.set(key, candidate);
+      }
+    });
   });
   return index;
 };
@@ -179,26 +226,40 @@ export const findExactLedgerMatch = (
   normalized: NormalizedMatchFields,
   index: ExactMatchIndex,
 ): LedgerMatchCandidate | null => {
-  const key = buildExactKey(normalized);
-  return index.get(key) ?? null;
+  const keys = buildExactKeyVariants(normalized);
+  for (const key of keys) {
+    const match = index.get(key);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
 };
 
-const buildFuzzyKey = (normalized: NormalizedMatchFields): string =>
-  [
-    normalized.accountIdentifier,
-    normalized.counterparty,
-    normalized.absoluteAmountMinor,
-  ].join(KEY_SEPARATOR);
+const buildFuzzyKey = (
+  normalized: NormalizedMatchFields,
+  counterpartyOverride?: string,
+): string =>
+  [normalized.accountIdentifier, counterpartyOverride ?? normalized.counterparty, normalized.absoluteAmountMinor].join(
+    KEY_SEPARATOR,
+  );
 
 export const buildFuzzyMatchIndex = (
   candidates: LedgerMatchCandidate[],
 ): FuzzyMatchIndex => {
   const index: FuzzyMatchIndex = new Map();
   candidates.forEach((candidate) => {
-    const key = buildFuzzyKey(candidate.normalized);
-    const bucket = index.get(key) ?? [];
-    bucket.push(candidate);
-    index.set(key, bucket);
+    const specificKey = buildFuzzyKey(candidate.normalized);
+    const specificBucket = index.get(specificKey) ?? [];
+    specificBucket.push(candidate);
+    index.set(specificKey, specificBucket);
+
+    if (candidate.normalized.counterparty) {
+      const fallbackKey = buildFuzzyKey(candidate.normalized, '');
+      const fallbackBucket = index.get(fallbackKey) ?? [];
+      fallbackBucket.push(candidate);
+      index.set(fallbackKey, fallbackBucket);
+    }
   });
   return index;
 };
@@ -209,7 +270,7 @@ const tokenize = (value: string): string[] =>
     .map((token) => token.trim())
     .filter(Boolean);
 
-const jaccardSimilarity = (a: string, b: string): number => {
+export const jaccardSimilarity = (a: string, b: string): number => {
   if (!a && !b) return 1;
   if (!a || !b) return 0;
   const tokensA = new Set(tokenize(a));
@@ -232,8 +293,23 @@ export const findFuzzyLedgerMatch = (
   index: FuzzyMatchIndex,
   threshold = 0.8,
 ): LedgerMatchCandidate | null => {
-  const bucket = index.get(buildFuzzyKey(normalizedImport));
-  if (!bucket?.length) {
+  const keys: string[] = [];
+  if (normalizedImport.counterparty) {
+    keys.push(buildFuzzyKey(normalizedImport));
+  }
+  keys.push(buildFuzzyKey(normalizedImport, ''));
+
+  let bucket: LedgerMatchCandidate[] | undefined;
+  for (const key of keys) {
+    if (key && index.has(key)) {
+      bucket = index.get(key);
+      if (bucket?.length) {
+        break;
+      }
+    }
+  }
+
+  if (!bucket || !bucket.length) {
     return null;
   }
 

@@ -84,4 +84,52 @@ describe('transactionMatching helpers', () => {
     const match = normalizedImport ? findFuzzyLedgerMatch(normalizedImport, fuzzyIndex) : null;
     expect(match).toBeNull();
   });
+
+  it('falls back to less specific exact keys when counterparty is missing in history', () => {
+    const ledgerSources = [
+      {
+        ...BASE_LEDGER_SOURCE,
+        counterparty: '',
+        raw: {},
+      },
+    ];
+    const candidates = buildLedgerMatchCandidates(ledgerSources);
+    const index = buildExactMatchIndex(candidates);
+    const normalizedImport = normalizeMatchableTransaction({
+      description: 'Yeshua Academy Tuition Contribution',
+      amountMinor: -12345n,
+      direction: 'debit',
+      accountIdentifier: 'NL89INGB0006369960',
+      counterparty: 'Stichting Yeshua',
+      notifications: 'Reference 2024-01',
+    });
+    expect(normalizedImport).not.toBeNull();
+    const match = normalizedImport ? findExactLedgerMatch(normalizedImport, index) : null;
+    expect(match).not.toBeNull();
+    expect(match?.categoryId).toBe('cat-expense');
+  });
+
+  it('uses wildcard fuzzy buckets when counterparty differs', () => {
+    const ledgerSources = [
+      {
+        ...BASE_LEDGER_SOURCE,
+        counterparty: '',
+        raw: {},
+      },
+    ];
+    const candidates = buildLedgerMatchCandidates(ledgerSources);
+    const fuzzyIndex = buildFuzzyMatchIndex(candidates);
+    const normalizedImport = normalizeMatchableTransaction({
+      description: 'Yeshua Academy Tuition Contribution',
+      amountMinor: -12345n,
+      direction: 'debit',
+      accountIdentifier: 'NL89INGB0006369960',
+      counterparty: 'Different Counterparty',
+      notifications: 'Reference 2024-01',
+    });
+    expect(normalizedImport).not.toBeNull();
+    const match = normalizedImport ? findFuzzyLedgerMatch(normalizedImport, fuzzyIndex) : null;
+    expect(match).not.toBeNull();
+    expect(match?.categoryId).toBe('cat-expense');
+  });
 });

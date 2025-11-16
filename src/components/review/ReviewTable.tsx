@@ -7,6 +7,7 @@ import { AccountBadge } from '@/components/ledger/AccountBadge';
 import { buildTransactionTooltip } from '@/helpers/transaction-tooltip';
 import { DEFAULT_CURRENCY, DEFAULT_LOCALE } from '@/constants/intl';
 import { cn } from '@/helpers/utils';
+import type { PlacesType } from 'react-tooltip';
 
 type SuggestionConfidence = 'exact' | 'fuzzy' | 'none';
 
@@ -239,7 +240,7 @@ export function ReviewTable({
           ? {
               'data-tooltip-id': 'tooltip',
               'data-tooltip-content': tooltipContent,
-              'data-tooltip-place': 'top',
+              'data-tooltip-place': 'top' as PlacesType,
             }
           : undefined;
         const isDebit = tx.direction === 'debit' || tx.amount < 0;
