@@ -3,6 +3,38 @@ import { prisma } from '../prismaClient';
 
 const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID ?? 'demo-user';
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const readRawValue = (raw: Record<string, unknown>, key: string): string | null => {
+  const direct = raw[key];
+  if (typeof direct === 'string') {
+    return direct;
+  }
+  const columns = raw.columns;
+  if (isPlainObject(columns) && typeof columns[key] === 'string') {
+    return columns[key] as string;
+  }
+  return null;
+};
+
+const extractNotificationDetail = (raw: Record<string, unknown> | null): string | null => {
+  if (!raw) return null;
+  const value =
+    readRawValue(raw, 'Notifications') ??
+    readRawValue(raw, 'Notification') ??
+    readRawValue(raw, 'notifications');
+  if (!value) return null;
+  const cleaned = value.trim().replace(/^Name:\s*/i, '');
+  return cleaned.length ? cleaned : null;
+};
+
+const extractCounterpartyAccount = (raw: Record<string, unknown> | null): string | null => {
+  if (!raw) return null;
+  const value = readRawValue(raw, 'Counterparty') ?? readRawValue(raw, 'counterparty');
+  return value?.trim() ? value.trim() : null;
+};
+
 export const getLedger = async (req: Request, res: Response) => {
   const userId = req.header('x-user-id') ?? DEFAULT_USER_ID;
 
@@ -110,9 +142,11 @@ export const getLedger = async (req: Request, res: Response) => {
       let rawMainCategoryName: string | null = null;
       let rawSubCategoryName: string | null = null;
 
-      const raw = tx.rawRow as unknown;
-      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-        const rawRecord = raw as Record<string, unknown>;
+      const rawValue = tx.rawRow as unknown;
+      const rawRecord = rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue)
+        ? (rawValue as Record<string, unknown>)
+        : null;
+      if (rawRecord) {
         if (typeof rawRecord.mainCategoryName === 'string') {
           rawMainCategoryName = rawRecord.mainCategoryName;
         }
@@ -134,6 +168,9 @@ export const getLedger = async (req: Request, res: Response) => {
           }
         }
       }
+
+      const notificationDetail = extractNotificationDetail(rawRecord) ?? tx.reference ?? null;
+      const counterpartyAccount = tx.counterparty ?? extractCounterpartyAccount(rawRecord) ?? null;
 
       const amount = Number(tx.amountMinor) / 100;
       const signedAmount = tx.direction === 'debit' ? -Math.abs(amount) : Math.abs(amount);
@@ -170,6 +207,8 @@ export const getLedger = async (req: Request, res: Response) => {
         suggestedSubCategoryName: suggestedSubCategoryName ?? rawSubCategoryName ?? tx.category?.name ?? null,
         rawMainCategoryName,
         rawCategoryName: rawSubCategoryName,
+        notificationDetail,
+        counterpartyAccount,
       };
     });
 

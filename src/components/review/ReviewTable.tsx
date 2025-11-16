@@ -225,8 +225,29 @@ export function ReviewTable({
         const confidence: SuggestionConfidence = suggestion?.confidence ?? 'none';
         const badgeConfig = BADGE_STYLE[confidence];
         const cardTone = CARD_TONE[confidence];
-        const tooltipContent = buildTransactionTooltip(tx);
-        const amountLabel = formatAmount(tx.amount);
+        const normalizedNotification = tx.notificationDetail
+          ? tx.notificationDetail.replace(/^Name:\s*/i, '').trim()
+          : '';
+        const shortNotification = normalizedNotification
+          ? normalizedNotification.length > 140
+            ? `${normalizedNotification.slice(0, 137)}…`
+            : normalizedNotification
+          : '';
+        const notificationTooltip = normalizedNotification || undefined;
+        const tooltipContent = notificationTooltip ?? buildTransactionTooltip(tx);
+        const tooltipAttrs = tooltipContent
+          ? {
+              'data-tooltip-id': 'tooltip',
+              'data-tooltip-content': tooltipContent,
+              'data-tooltip-place': 'top',
+            }
+          : undefined;
+        const isDebit = tx.direction === 'debit' || tx.amount < 0;
+        const absoluteAmount = Math.abs(tx.amount);
+        const formattedAmount = formatAmount(absoluteAmount);
+        const amountLabel = isDebit ? `- ${formattedAmount}` : formattedAmount;
+        const amountClassName = isDebit ? 'text-rose-300' : 'text-emerald-300';
+        const amountTooltip = tx.counterpartyAccount ? `Counterparty: ${tx.counterpartyAccount}` : undefined;
         const dateLabel = formatDate(tx.date);
         const disabled = pendingId === tx.id;
         const subs = subcategoryOptions[mainId] ?? [];
@@ -269,22 +290,24 @@ export function ReviewTable({
                     'text-base font-semibold text-white',
                     tooltipContent ? 'cursor-help decoration-dotted underline-offset-4 hover:underline' : '',
                   )}
-                  {...(tooltipContent
-                    ? {
-                        'data-tooltip-id': 'tooltip',
-                        'data-tooltip-content': tooltipContent,
-                        'data-tooltip-place': 'top',
-                      }
-                    : undefined)}
+                  title={notificationTooltip}
+                  {...tooltipAttrs}
                 >
                   {tx.description}
                 </div>
-                {tx.notificationDetail ? (
-                  <p className="text-xs text-white/50">{tx.notificationDetail}</p>
+                {shortNotification ? (
+                  <p className="text-xs text-white/50" title={notificationTooltip}>
+                    {shortNotification}
+                  </p>
                 ) : null}
               </div>
               <div className="flex flex-col items-start gap-3 md:items-end">
-                <span className="text-lg font-semibold text-white">{amountLabel}</span>
+                <span
+                  className={cn('text-lg font-semibold', amountClassName)}
+                  title={amountTooltip}
+                >
+                  {amountLabel}
+                </span>
                 <span
                   className={cn(
                     'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide',

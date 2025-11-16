@@ -192,6 +192,8 @@ type ApiLedgerTransaction = {
   suggestedSubCategoryName?: string | null;
   rawMainCategoryName?: string | null;
   rawCategoryName?: string | null;
+  notificationDetail?: string | null;
+  counterpartyAccount?: string | null;
 };
 
 type ApiLedgerSummary = {
@@ -348,6 +350,7 @@ export interface LedgerTransaction {
   accountIdentifier: string | null;
   normalizedKey: string;
   notificationDetail: string | null;
+  counterpartyAccount: string | null;
   categoryId: UUID | null;
   categoryName: string | null;
   mainCategoryId: UUID | null;
@@ -501,7 +504,8 @@ const mapApiTransaction = (tx: ApiLedgerTransaction): LedgerTransaction => {
     accountLabel: tx.accountLabel ?? tx.accountIdentifier ?? null,
     accountIdentifier: tx.accountIdentifier ?? null,
     normalizedKey,
-    notificationDetail: tx.reference ?? null,
+    notificationDetail: tx.notificationDetail ?? tx.reference ?? null,
+    counterpartyAccount: tx.counterpartyAccount ?? tx.counterparty ?? null,
     categoryId: tx.categoryId ?? null,
     categoryName: subName,
     mainCategoryId,
@@ -671,6 +675,8 @@ const buildTransactionFromRow = (row: ParsedRow): Omit<LedgerTransaction, 'categ
     row.Counterparty ?? row['Counter Party'] ?? row.source ?? row.Source ?? row.merchant ?? rawDescription;
   const rawDebitCredit = row['Debit/credit'] ?? row['Debit Credit'];
   const notificationDetail = sanitizeNotification(row.Notifications ?? row.notifications);
+  const counterpartyAccountRaw = row.Counterparty ?? row['Counter Party'];
+  const counterpartyAccount = typeof counterpartyAccountRaw === 'string' ? counterpartyAccountRaw.trim() : null;
 
   if (!rawDate || !rawDescription || !rawAmount) {
     return null;
@@ -698,6 +704,7 @@ const buildTransactionFromRow = (row: ParsedRow): Omit<LedgerTransaction, 'categ
     accountIdentifier: accountLabel ? accountIdentifier ?? sourceValue : null,
     normalizedKey,
     notificationDetail,
+    counterpartyAccount: counterpartyAccount ?? null,
     ledgerMonth: parsedDate.getUTCMonth() + 1,
     ledgerYear: parsedDate.getUTCFullYear(),
     createdAt: new Date().toISOString(),
@@ -1184,6 +1191,7 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
         accountIdentifier: tx.accountIdentifier,
         normalizedKey: tx.normalizedKey,
         notificationDetail: tx.notificationDetail ?? null,
+        counterpartyAccount: tx.counterpartyAccount ?? null,
         ledgerMonth: tx.ledgerMonth,
         ledgerYear: tx.ledgerYear,
         createdAt: tx.createdAt,
