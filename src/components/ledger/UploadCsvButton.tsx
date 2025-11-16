@@ -7,7 +7,7 @@ import { useLedger } from '@/context/ledger-context';
 export function UploadCsvButton() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
-  const { importCsv } = useLedger();
+  const { importCsv, refreshLedger } = useLedger();
 
   const handleClick = () => {
     inputRef.current?.click();
@@ -39,6 +39,7 @@ export function UploadCsvButton() {
       }
 
       toast.success(parts.join(' • '));
+      await refreshLedger();
 
       if (summary.errors && summary.errors.length) {
         console.warn('Import row issues', summary.errors);

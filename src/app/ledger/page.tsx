@@ -59,14 +59,23 @@ type AccountFilterKey = 'all' | 'yeshua' | 'vila' | 'savings';
 
 const ACCOUNT_FILTER_CONFIG: Record<
   AccountFilterKey,
-  { label: string; matchLabels?: string[] }
+  { label: string; matchLabels?: string[]; matchIdentifiers?: string[] }
 > = {
   all: { label: 'All accounts' },
-  yeshua: { label: 'Yeshua Academy', matchLabels: ['Yeshua Academy'] },
-  vila: { label: 'Vila Solidária', matchLabels: ['Vila Solidária'] },
+  yeshua: {
+    label: 'Yeshua Academy',
+    matchLabels: ['Yeshua Academy'],
+    matchIdentifiers: ['NL89INGB0006369960'],
+  },
+  vila: {
+    label: 'Vila Solidária',
+    matchLabels: ['Vila Solidária'],
+    matchIdentifiers: ['R 951-98945', 'R95198945'],
+  },
   savings: {
     label: 'Yeshua Academy Savings',
     matchLabels: ['Yeshua Academy Savings'],
+    matchIdentifiers: ['F 951-98948', 'F95198948'],
   },
 };
 
@@ -76,6 +85,56 @@ const ACCOUNT_FILTER_OPTIONS: Array<{ key: AccountFilterKey; label: string }> = 
   { key: 'vila', label: ACCOUNT_FILTER_CONFIG.vila.label },
   { key: 'savings', label: ACCOUNT_FILTER_CONFIG.savings.label },
 ];
+
+const normalizeAccountValue = (value?: string | null) => value?.trim().toLowerCase() ?? '';
+
+const matchesAccountFilter = (
+  tx: Pick<LedgerTransaction, 'accountLabel' | 'accountIdentifier'>,
+  filter: AccountFilterKey,
+) => {
+  if (filter === 'all') {
+    return true;
+  }
+  const config = ACCOUNT_FILTER_CONFIG[filter];
+  if (!config) {
+    return false;
+  }
+
+  const label = normalizeAccountValue(tx.accountLabel);
+  const identifier = normalizeAccountValue(tx.accountIdentifier);
+  const labelMatches = (config.matchLabels ?? []).some(
+    (candidate) => normalizeAccountValue(candidate) === label && Boolean(candidate),
+  );
+  const identifierMatches = (config.matchIdentifiers ?? []).some(
+    (candidate) => normalizeAccountValue(candidate) === identifier && Boolean(candidate),
+  );
+
+  return labelMatches || identifierMatches;
+};
+
+const filterTransactionsByAccount = (
+  transactions: LedgerTransaction[],
+  selected: AccountFilterKey,
+  allowFallbackForYeshua = false,
+) => {
+  if (selected === 'all') {
+    return transactions;
+  }
+
+  if (selected === 'yeshua' && allowFallbackForYeshua) {
+    return transactions.filter((tx) => {
+      if (matchesAccountFilter(tx, 'yeshua')) {
+        return true;
+      }
+      if (!tx.accountLabel && !tx.accountIdentifier) {
+        return true;
+      }
+      return !matchesAccountFilter(tx, 'vila') && !matchesAccountFilter(tx, 'savings');
+    });
+  }
+
+  return transactions.filter((tx) => matchesAccountFilter(tx, selected));
+};
 
 const ACCOUNT_COLOR_MAP: Record<AccountFilterKey, string> = {
   all: '#6366F1',
@@ -434,32 +493,10 @@ function MonthlyOverviewView({
     });
   }, [transactions, mode, selectedMonth, selectedYear, customFrom, customTo]);
 
-  const filteredTransactions = useMemo(() => {
-    if (accountFilter === 'all') {
-      return periodTransactions;
-    }
-    const matchLabels = ACCOUNT_FILTER_CONFIG[accountFilter].matchLabels ?? [];
-    if (matchLabels.length === 0) {
-      return periodTransactions;
-    }
-    if (accountFilter === 'yeshua') {
-      const otherLabels = new Set([
-        ...(ACCOUNT_FILTER_CONFIG.vila.matchLabels ?? []),
-        ...(ACCOUNT_FILTER_CONFIG.savings.matchLabels ?? []),
-      ]);
-      return periodTransactions.filter((tx) => {
-        const label = tx.accountLabel ?? '';
-        if (matchLabels.includes(label)) {
-          return true;
-        }
-        if (!label) {
-          return true;
-        }
-        return !otherLabels.has(label);
-      });
-    }
-    return periodTransactions.filter((tx) => matchLabels.includes(tx.accountLabel ?? ''));
-  }, [periodTransactions, accountFilter]);
+  const filteredTransactions = useMemo(
+    () => filterTransactionsByAccount(periodTransactions, accountFilter, true),
+    [periodTransactions, accountFilter],
+  );
 
   const totals = useMemo(() => {
     let income = 0;
@@ -520,11 +557,9 @@ function MonthlyOverviewView({
       });
     });
 
-    const identifyAccount = (label: string | null | undefined): AccountFilterKey => {
-      if (!label) return 'yeshua';
+    const identifyAccount = (transaction: LedgerTransaction): AccountFilterKey => {
       for (const key of baseOrder) {
-        const matches = ACCOUNT_FILTER_CONFIG[key].matchLabels ?? [];
-        if (matches.includes(label)) {
+        if (matchesAccountFilter(transaction, key)) {
           return key;
         }
       }
@@ -532,7 +567,7 @@ function MonthlyOverviewView({
     };
 
     periodTransactions.forEach((tx) => {
-      const bucketKey = identifyAccount(tx.accountLabel);
+      const bucketKey = identifyAccount(tx);
       const bucket = baseMap.get(bucketKey);
       if (!bucket) return;
       if (isDebitTransaction(tx)) {
@@ -1131,16 +1166,10 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
     });
   }, [periodTransactions, mainFilter, subFilter]);
 
-  const accountFilteredTransactions = useMemo(() => {
-    if (accountFilter === 'all') {
-      return baseFilteredTransactions;
-    }
-    const matchLabels = ACCOUNT_FILTER_CONFIG[accountFilter].matchLabels ?? [];
-    if (!matchLabels.length) {
-      return baseFilteredTransactions;
-    }
-    return baseFilteredTransactions.filter((tx) => matchLabels.includes(tx.accountLabel ?? ''));
-  }, [baseFilteredTransactions, accountFilter]);
+  const accountFilteredTransactions = useMemo(
+    () => filterTransactionsByAccount(baseFilteredTransactions, accountFilter),
+    [baseFilteredTransactions, accountFilter],
+  );
 
   const visibleTransactions = accountFilteredTransactions;
 

@@ -403,6 +403,7 @@ interface LedgerContextValue {
   };
   reviewTransactions: LedgerTransaction[];
   importCsv: (file: File) => Promise<ImportSummary>;
+  refreshLedger: () => Promise<void>;
   assignCategory: (
     transactionId: UUID,
     options: { categoryId?: UUID | null; mainCategoryId?: UUID | null; categoryName?: string }
@@ -1130,7 +1131,6 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
         formData.append('file', file);
 
         const summary = await uploadImportFile(formData);
-        await refreshFromServer();
 
         return {
           importedCount: summary.importedCount,
@@ -1212,8 +1212,12 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
         reviewCount,
       };
     },
-    [refreshFromServer, state.transactions, categoryIndex],
+    [state.transactions, categoryIndex],
   );
+
+  const refreshLedger = useCallback(async () => {
+    await refreshFromServer();
+  }, [refreshFromServer]);
 
   const assignCategory = useCallback(
     async (
@@ -1338,6 +1342,7 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
       summary,
       reviewTransactions,
       importCsv,
+      refreshLedger,
       assignCategory,
       clearAll,
       serverPipelineEnabled: USE_SERVER_PIPELINE,
@@ -1348,7 +1353,7 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
       deleteRule,
       ledgerMeta,
     }),
-    [state.transactions, state.categories, categoryTree, summary, reviewTransactions, importCsv, assignCategory, clearAll, rules, refreshRules, createRule, updateRule, deleteRule, ledgerMeta],
+    [state.transactions, state.categories, categoryTree, summary, reviewTransactions, importCsv, refreshLedger, assignCategory, clearAll, rules, refreshRules, createRule, updateRule, deleteRule, ledgerMeta],
   );
 
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;
