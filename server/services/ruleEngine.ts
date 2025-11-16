@@ -134,18 +134,25 @@ export const createRule = async (
     createdBy?: string;
   },
 ): Promise<CategorizationRule> => {
+  const data: Prisma.CategorizationRuleUncheckedCreateInput = {
+    userId,
+    importBatchId: null,
+    ledgerId: null,
+    categoryId: payload.categoryId,
+    label: payload.label.trim(),
+    pattern: payload.pattern.trim(),
+    matchType: payload.matchType ?? 'regex',
+    matchField: payload.matchField ?? 'description',
+    priority: payload.priority ?? 100,
+    isActive: payload.isActive ?? true,
+    createdBy: payload.createdBy,
+    createdAt: undefined as unknown as Date, // let database defaults handle timestamps
+    updatedAt: undefined as unknown as Date,
+    lastMatchedAt: null,
+  };
+
   return tx.categorizationRule.create({
-    data: {
-      userId,
-      label: payload.label.trim(),
-      pattern: payload.pattern.trim(),
-      matchType: payload.matchType ?? 'regex',
-      matchField: payload.matchField ?? 'description',
-      categoryId: payload.categoryId,
-      priority: payload.priority ?? 100,
-      isActive: payload.isActive ?? true,
-      createdBy: payload.createdBy,
-    },
+    data: data,
   });
 };
 
