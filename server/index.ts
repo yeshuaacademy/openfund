@@ -4,7 +4,7 @@ import cors from 'cors';
 import multer from 'multer';
 import { handleImportUpload } from './routes/upload';
 import { getLedger } from './routes/ledger';
-import { getReviewTransactions, updateTransactionCategory } from './routes/review';
+import { getReviewTransactions, updateTransactionCategory, clearReviewQueue } from './routes/review';
 import { listAccounts, lockOpeningBalance, upsertOpeningBalance } from './routes/accounts';
 import { getReconciliation } from './routes/reconciliation';
 import { lockLedger, unlockLedger } from './routes/ledgers';
@@ -23,6 +23,7 @@ app.get('/healthz', (_req, res) => {
 app.post('/api/upload', upload.single('file'), handleImportUpload);
 app.get('/api/ledger', getLedger);
 app.get('/api/review', getReviewTransactions);
+app.post('/api/review/clear', clearReviewQueue);
 app.patch('/api/transactions/:id/category', updateTransactionCategory);
 app.get('/api/accounts', listAccounts);
 app.post('/api/accounts/:accountId/opening-balance', upsertOpeningBalance);

@@ -9,6 +9,7 @@ import {
   createCategorizationRule,
   updateCategorizationRule,
   deleteCategorizationRule,
+  clearReviewQueue as clearReviewQueueRequest,
 } from '@/libs/api';
 
 type AccountLabelEntry = {
@@ -408,6 +409,7 @@ interface LedgerContextValue {
     transactionId: UUID,
     options: { categoryId?: UUID | null; mainCategoryId?: UUID | null; categoryName?: string }
   ) => Promise<void>;
+  clearReviewQueue: () => Promise<void>;
   clearAll: () => void;
   serverPipelineEnabled: boolean;
   rules: RuleSummary[];
@@ -1330,6 +1332,11 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
     [],
   );
 
+  const clearReviewQueue = useCallback(async () => {
+    await clearReviewQueueRequest();
+    await refreshFromServer();
+  }, [refreshFromServer]);
+
   const clearAll = useCallback(() => {
     setState(DEFAULT_STATE);
   }, []);
@@ -1344,6 +1351,7 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
       importCsv,
       refreshLedger,
       assignCategory,
+      clearReviewQueue,
       clearAll,
       serverPipelineEnabled: USE_SERVER_PIPELINE,
       rules,
@@ -1353,7 +1361,7 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
       deleteRule,
       ledgerMeta,
     }),
-    [state.transactions, state.categories, categoryTree, summary, reviewTransactions, importCsv, refreshLedger, assignCategory, clearAll, rules, refreshRules, createRule, updateRule, deleteRule, ledgerMeta],
+    [state.transactions, state.categories, categoryTree, summary, reviewTransactions, importCsv, refreshLedger, assignCategory, clearReviewQueue, clearAll, rules, refreshRules, createRule, updateRule, deleteRule, ledgerMeta],
   );
 
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;

@@ -166,6 +166,7 @@ model Transaction {
   updatedAt            DateTime                        @default(now())
   classificationSource TransactionClassificationSource @default(none)
   classificationRuleId String?
+  importFingerprint    String?
   account              Account?                        @relation(fields: [accountId], references: [id])
   category             Category?                       @relation(fields: [categoryId], references: [id])
   classificationRule   CategorizationRule?             @relation(fields: [classificationRuleId], references: [id])
@@ -177,6 +178,7 @@ model Transaction {
   @@index([userId, normalizedKey, amountMinor])
   @@index([userId, accountId, date])
   @@index([classificationRuleId])
+  @@unique([userId, importFingerprint])
 }
 
 model CategorizationRule {

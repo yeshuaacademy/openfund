@@ -28,6 +28,19 @@ export const fetchReview = async () => {
   return response.json();
 };
 
+export const clearReviewQueue = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/review/clear`, withUserHeader({
+    method: 'POST',
+  }));
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to clear review queue' }));
+    throw new Error(error.error ?? 'Failed to clear review queue');
+  }
+
+  return response.json();
+};
+
 export const uploadImportFile = async (formData: FormData) => {
   const response = await fetch(`${API_BASE_URL}/api/upload`, withUserHeader({
     method: 'POST',

@@ -12,6 +12,7 @@ import {
   MissingOpeningBalanceError,
   validateLedgerBalance,
 } from './reconciliationService';
+import { buildImportFingerprint } from './transactionFingerprint';
 import {
   buildExactMatchIndex as buildLedgerExactMatchIndex,
   buildLedgerMatchCandidates,
@@ -20,6 +21,7 @@ import {
   findFuzzyLedgerMatch,
   normalizeMatchableTransaction,
   type LedgerMatchSource,
+  type NormalizedMatchFields,
 } from './transactionMatching';
 
 interface ProcessImportOptions {
@@ -31,6 +33,11 @@ interface ProcessImportOptions {
 type Direction = 'credit' | 'debit';
 
 type TxClient = Prisma.TransactionClient;
+
+type EnrichedImportRow = ParsedRowSuccess & {
+  hash: string;
+  importFingerprint: string;
+};
 
 const LOCKS_ENABLED = process.env.RECONCILIATION_LOCKS_ENABLED !== 'false';
 
@@ -434,6 +441,209 @@ const suggestCategoryFromIndex = (
   return null;
 };
 
+type ClassificationContext = {
+  tx: TxClient;
+  userId: string;
+  row: EnrichedImportRow;
+  direction: Direction;
+  historyMatchKey: string | null;
+  historyMatchIndex: Map<string, string>;
+  suggestionIndex: SuggestionIndex;
+  accountIdentifierForMatch: string | null;
+  activeRules: Awaited<ReturnType<typeof fetchActiveRules>>;
+  reviewCategoryId: string;
+  categoryNameLookup: Map<string, string>;
+  normalizedLedgerMatchInput: NormalizedMatchFields | null;
+  ledgerExactMatchIndex: ReturnType<typeof buildLedgerExactMatchIndex>;
+  ledgerFuzzyMatchIndex: ReturnType<typeof buildFuzzyMatchIndex>;
+};
+
+type ClassificationResult = {
+  categoryId: string;
+  classificationSource: TransactionClassificationSource;
+  classificationRuleId: string | null;
+  suggestionConfidence: SuggestionConfidence;
+  suggestedMainName: string | null;
+  suggestedSubName: string | null;
+  rawPayload: Prisma.InputJsonValue;
+};
+
+const classifyImportRow = async ({
+  tx,
+  userId,
+  row,
+  direction,
+  historyMatchKey,
+  historyMatchIndex,
+  suggestionIndex,
+  accountIdentifierForMatch,
+  activeRules,
+  reviewCategoryId,
+  categoryNameLookup,
+  normalizedLedgerMatchInput,
+  ledgerExactMatchIndex,
+  ledgerFuzzyMatchIndex,
+}: ClassificationContext): Promise<ClassificationResult> => {
+  let categoryId: string | null = null;
+  let classificationSource: TransactionClassificationSource = 'import';
+  let classificationRuleId: string | null = null;
+  let suggestionConfidence: SuggestionConfidence = 'review';
+
+  if (historyMatchKey && historyMatchIndex.has(historyMatchKey)) {
+    categoryId = historyMatchIndex.get(historyMatchKey)!;
+    classificationSource = 'history';
+    suggestionConfidence = 'exact';
+  } else if (normalizedLedgerMatchInput) {
+    const exactLedgerMatch = findExactLedgerMatch(normalizedLedgerMatchInput, ledgerExactMatchIndex);
+    if (exactLedgerMatch) {
+      categoryId = exactLedgerMatch.categoryId;
+      classificationSource = 'history';
+      suggestionConfidence = 'exact';
+    } else {
+      const fuzzyLedgerMatch = findFuzzyLedgerMatch(normalizedLedgerMatchInput, ledgerFuzzyMatchIndex);
+      if (fuzzyLedgerMatch) {
+        categoryId = fuzzyLedgerMatch.categoryId;
+        classificationSource = 'import';
+        suggestionConfidence = 'fuzzy';
+      }
+    }
+  } else {
+    const categorization = await categorizeTransaction(
+      tx,
+      {
+        userId,
+        source: row.source,
+        normalizedDescription: row.normalizedDescription,
+        description: row.description,
+        amountMinor: row.amountMinor,
+        accountIdentifier: row.accountIdentifier,
+        counterparty: row.counterparty,
+        reference: row.reference,
+      },
+      { rules: activeRules },
+    );
+
+    if (categorization.classificationSource === 'rule' && categorization.categoryId) {
+      categoryId = categorization.categoryId;
+      classificationSource = 'rule';
+      classificationRuleId = categorization.ruleId;
+      suggestionConfidence = 'rule';
+    } else if (categorization.classificationSource === 'history' && categorization.categoryId) {
+      categoryId = categorization.categoryId;
+      classificationSource = 'import';
+      suggestionConfidence = 'description';
+    } else if (categorization.categoryId) {
+      categoryId = categorization.categoryId;
+      classificationSource = categorization.classificationSource;
+    }
+  }
+
+  if (!categoryId) {
+    const suggestion = suggestCategoryFromIndex(
+      suggestionIndex,
+      accountIdentifierForMatch,
+      row.normalizedDescription,
+      row.amountMinor,
+    );
+
+    if (suggestion && suggestion.categoryId) {
+      categoryId = suggestion.categoryId;
+      suggestionConfidence = suggestion.confidence === 'exact' ? 'description' : suggestion.confidence;
+      classificationSource = 'import';
+    } else {
+      categoryId = reviewCategoryId;
+      suggestionConfidence = 'review';
+      classificationSource = 'import';
+    }
+  }
+
+  let suggestedMainName: string | null = null;
+  let suggestedSubName: string | null = null;
+
+  if (categoryId === reviewCategoryId) {
+    const reviewLabel = categoryNameLookup.get(reviewCategoryId) ?? 'Needs manual categorization';
+    const split = splitCategoryLabel(reviewLabel);
+    suggestedMainName = split.main ?? 'Review';
+    suggestedSubName = split.sub ?? reviewLabel;
+  } else if (categoryId) {
+    const categoryLabel = categoryNameLookup.get(categoryId) ?? null;
+    const split = splitCategoryLabel(categoryLabel);
+    suggestedMainName = split.main ?? categoryLabel;
+    suggestedSubName = split.sub ?? categoryLabel;
+  }
+
+  const rawPayload = buildRawPayload(
+    row,
+    direction,
+    suggestionConfidence,
+    suggestedMainName,
+    suggestedSubName,
+    categoryId,
+    classificationSource,
+  );
+
+  return {
+    categoryId,
+    classificationSource,
+    classificationRuleId,
+    suggestionConfidence,
+    suggestedMainName,
+    suggestedSubName,
+    rawPayload,
+  };
+};
+
+const buildRawPayload = (
+  row: EnrichedImportRow,
+  direction: Direction,
+  suggestionConfidence: SuggestionConfidence,
+  suggestedMainName: string | null,
+  suggestedSubName: string | null,
+  categoryId: string,
+  classificationSource: TransactionClassificationSource,
+): Prisma.InputJsonValue => {
+  const baseRaw = (row.raw ?? {}) as Record<string, unknown>;
+  const canonicalColumns: Record<string, unknown> = {
+    'Name / Description': row.description,
+    Account: row.accountIdentifier,
+    Counterparty: row.counterparty ?? baseRaw['Counterparty'] ?? null,
+    Code: baseRaw['Code'] ?? null,
+    'Debit/credit': baseRaw['Debit/credit'] ?? (direction === 'credit' ? 'Credit' : 'Debit'),
+    'Amount (EUR)': Number(row.amountMinor) / 100,
+    'Transaction type': baseRaw['Transaction type'] ?? row.source,
+    Notifications: baseRaw['Notifications'] ?? baseRaw['Notification'] ?? null,
+  };
+
+  const existingColumns =
+    typeof baseRaw.columns === 'object' && baseRaw.columns && !Array.isArray(baseRaw.columns)
+      ? (baseRaw.columns as Record<string, unknown>)
+      : {};
+
+  const flattenedRaw = toJsonObject(
+    Object.fromEntries(
+      Object.entries(baseRaw).filter(([key]) => key !== 'columns' && key !== 'suggestion'),
+    ),
+  );
+
+  const rawColumns = toJsonObject({
+    ...existingColumns,
+    ...flattenedRaw,
+    ...canonicalColumns,
+  });
+
+  return {
+    ...flattenedRaw,
+    columns: rawColumns,
+    suggestion: {
+      confidence: suggestionConfidence,
+      matchedCategoryId: categoryId,
+      matchedBy: classificationSource,
+      mainCategoryName: suggestedMainName,
+      categoryName: suggestedSubName,
+    },
+  };
+};
+
 const ensureReviewCategory = async (tx: TxClient): Promise<string> => {
   const category = await tx.category.upsert({
     where: { name: REVIEW_CATEGORY_NAME },
@@ -499,22 +709,51 @@ export const processImportBufferWithClient = async (
     }
 
     const hashedRows = attachHashes(userId, parsed.successes);
-    const enrichedRows = format === 'xlsx_initial'
+    const normalizedRows = format === 'xlsx_initial'
       ? hashedRows.map((row) => ({ ...row, hash: `${row.hash}|${row.rowNumber}` }))
       : hashedRows;
 
-    const existing = await tx.transaction.findMany({
-      where: {
-        hash: {
-          in: enrichedRows.map((row) => row.hash),
-        },
-      },
-      select: {
-        hash: true,
-      },
+    const enrichedRows: EnrichedImportRow[] = normalizedRows.map((row) => ({
+      ...row,
+      importFingerprint: buildImportFingerprint({
+        accountIdentifier: row.accountIdentifier,
+        date: row.date,
+        amountMinor: row.amountMinor,
+        description: row.description,
+        counterparty: row.counterparty ?? null,
+        reference: row.reference ?? null,
+        raw: row.raw ?? null,
+      }),
+    }));
+
+    const existingTransactions = enrichedRows.length
+      ? await tx.transaction.findMany({
+          where: {
+            hash: {
+              in: enrichedRows.map((row) => row.hash),
+            },
+          },
+          select: {
+            id: true,
+            hash: true,
+            importFingerprint: true,
+            classificationSource: true,
+            classificationRuleId: true,
+            categoryId: true,
+          },
+        })
+      : [];
+
+    const existingHashes = new Set(existingTransactions.map((entry) => entry.hash));
+    const existingByFingerprint = new Map<string, (typeof existingTransactions)[number]>();
+    const existingByHash = new Map<string, (typeof existingTransactions)[number]>();
+    existingTransactions.forEach((entry) => {
+      existingByHash.set(entry.hash, entry);
+      if (entry.importFingerprint) {
+        existingByFingerprint.set(entry.importFingerprint, entry);
+      }
     });
 
-    const existingHashes = new Set(existing.map((entry) => entry.hash));
     const { uniques, duplicates } = partitionDuplicates(enrichedRows, existingHashes);
 
     const accountMap = await ensureAccounts(tx, userId, uniques);
@@ -656,9 +895,99 @@ export const processImportBufferWithClient = async (
     const ledgerFuzzyMatchIndex = buildFuzzyMatchIndex(ledgerMatchCandidates);
     let autoCategorized = 0;
     let imported = 0;
+    let reprocessed = 0;
     const reconciliationTargets = new Map<string, { accountId: string; month: number; year: number; ledgerId: string }>();
 
     const now = new Date();
+    const processedExistingIds = new Set<string>();
+
+    if (duplicates.length) {
+      for (const row of duplicates) {
+        const existing =
+          existingByFingerprint.get(row.importFingerprint) ?? existingByHash.get(row.hash);
+        if (!existing || processedExistingIds.has(existing.id)) {
+          continue;
+        }
+        if (existing.classificationSource === 'manual') {
+          continue;
+        }
+
+        const direction = deriveDirection(row.amountMinor);
+        const accountIdentifierForMatch = row.accountIdentifier ?? null;
+        const historyMatchKey = buildHistoryMatchKey(row.raw as Prisma.JsonValue, {
+          description: row.description,
+          accountIdentifier: row.accountIdentifier,
+          counterparty: row.counterparty,
+          debitCredit: direction === 'credit' ? 'Credit' : 'Debit',
+          amountMinor: row.amountMinor < 0n ? row.amountMinor * -1n : row.amountMinor,
+          transactionType: (row.raw && (row.raw as Record<string, unknown>)['Transaction type']) as string | null,
+          code: (row.raw && (row.raw as Record<string, unknown>)['Code']) as string | null,
+          notifications: (row.raw &&
+            ((row.raw as Record<string, unknown>)['Notifications'] ??
+              (row.raw as Record<string, unknown>)['Notification'])) as string | null,
+        });
+
+        const normalizedLedgerMatchInput = normalizeMatchableTransaction({
+          description: row.description,
+          amountMinor: row.amountMinor,
+          direction,
+          accountIdentifier: row.accountIdentifier,
+          counterparty: row.counterparty ?? null,
+          raw: row.raw,
+        });
+
+        const classification = await classifyImportRow({
+          tx,
+          userId,
+          row,
+          direction,
+          historyMatchKey,
+          historyMatchIndex,
+          suggestionIndex,
+          accountIdentifierForMatch,
+          activeRules,
+          reviewCategoryId,
+          categoryNameLookup,
+          normalizedLedgerMatchInput,
+          ledgerExactMatchIndex,
+          ledgerFuzzyMatchIndex,
+        });
+
+        await tx.transaction.update({
+          where: { id: existing.id },
+          data: {
+            categoryId: classification.categoryId,
+            classificationSource: classification.classificationSource,
+            classificationRuleId: classification.classificationRuleId,
+            rawRow: classification.rawPayload,
+            importFingerprint: row.importFingerprint,
+            updatedAt: now,
+          },
+        });
+
+        const isAutoCategorized =
+          classification.classificationSource === 'history' || classification.classificationSource === 'rule';
+        if (isAutoCategorized) {
+          autoCategorized += 1;
+        }
+
+        if (classification.categoryId && classification.categoryId !== reviewCategoryId) {
+          registerSuggestion(
+            suggestionIndex,
+            accountIdentifierForMatch,
+            row.normalizedDescription,
+            row.amountMinor,
+            classification.categoryId,
+          );
+          if (historyMatchKey) {
+            historyMatchIndex.set(historyMatchKey, classification.categoryId);
+          }
+        }
+
+        processedExistingIds.add(existing.id);
+        reprocessed += 1;
+      }
+    }
 
     const chunkedRecords: Array<typeof uniques> = chunk(uniques, CHUNK_SIZE);
 
@@ -685,6 +1014,7 @@ export const processImportBufferWithClient = async (
         classificationRuleId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        importFingerprint: string;
       }> = [];
 
       for (const row of group) {
@@ -708,11 +1038,6 @@ export const processImportBufferWithClient = async (
               (row.raw as Record<string, unknown>)['Notification'])) as string | null,
         });
 
-        let categoryId: string | null = null;
-        let classificationSource: TransactionClassificationSource = 'import';
-        let classificationRuleId: string | null = null;
-        let suggestionConfidence: SuggestionConfidence = 'review';
-
         const normalizedLedgerMatchInput = normalizeMatchableTransaction({
           description: row.description,
           amountMinor: row.amountMinor,
@@ -722,167 +1047,28 @@ export const processImportBufferWithClient = async (
           raw: row.raw,
         });
 
-        if (historyMatchKey && historyMatchIndex.has(historyMatchKey)) {
-          categoryId = historyMatchIndex.get(historyMatchKey)!;
-          classificationSource = 'history';
-          suggestionConfidence = 'exact';
-        } else if (normalizedLedgerMatchInput) {
-          const exactLedgerMatch = findExactLedgerMatch(normalizedLedgerMatchInput, ledgerExactMatchIndex);
-          if (exactLedgerMatch) {
-            categoryId = exactLedgerMatch.categoryId;
-            classificationSource = 'history';
-            suggestionConfidence = 'exact';
-          } else {
-            const fuzzyLedgerMatch = findFuzzyLedgerMatch(
-              normalizedLedgerMatchInput,
-              ledgerFuzzyMatchIndex,
-            );
-            if (fuzzyLedgerMatch) {
-              categoryId = fuzzyLedgerMatch.categoryId;
-              classificationSource = 'import';
-              suggestionConfidence = 'fuzzy';
-            }
-          }
-        }
+        const classification = await classifyImportRow({
+          tx,
+          userId,
+          row,
+          direction,
+          historyMatchKey,
+          historyMatchIndex,
+          suggestionIndex,
+          accountIdentifierForMatch,
+          activeRules,
+          reviewCategoryId,
+          categoryNameLookup,
+          normalizedLedgerMatchInput,
+          ledgerExactMatchIndex,
+          ledgerFuzzyMatchIndex,
+        });
 
-        if (!categoryId) {
-          const categorization = await categorizeTransaction(
-            tx,
-            {
-              userId,
-              source: row.source,
-              normalizedDescription: row.normalizedDescription,
-              description: row.description,
-              amountMinor: row.amountMinor,
-              accountIdentifier: row.accountIdentifier,
-              counterparty: row.counterparty,
-              reference: row.reference,
-            },
-            { rules: activeRules },
-          );
-
-          if (categorization.classificationSource === 'rule' && categorization.categoryId) {
-            categoryId = categorization.categoryId;
-            classificationSource = 'rule';
-            classificationRuleId = categorization.ruleId;
-            suggestionConfidence = 'rule';
-          } else if (categorization.classificationSource === 'history' && categorization.categoryId) {
-            categoryId = categorization.categoryId;
-            classificationSource = 'import';
-            suggestionConfidence = 'description';
-          } else if (categorization.categoryId) {
-            categoryId = categorization.categoryId;
-            classificationSource = categorization.classificationSource;
-          }
-        }
-
-        if (!categoryId) {
-          const suggestion = suggestCategoryFromIndex(
-            suggestionIndex,
-            accountIdentifierForMatch,
-            row.normalizedDescription,
-            row.amountMinor,
-          );
-
-          if (suggestion && suggestion.categoryId) {
-            categoryId = suggestion.categoryId;
-            suggestionConfidence =
-              suggestion.confidence === 'exact' ? 'description' : suggestion.confidence;
-            classificationSource = 'import';
-          } else {
-            categoryId = reviewCategoryId;
-            suggestionConfidence = 'review';
-            classificationSource = 'import';
-          }
-        }
-
-        const isAutoCategorized = classificationSource === 'history' || classificationSource === 'rule';
+        const isAutoCategorized =
+          classification.classificationSource === 'history' || classification.classificationSource === 'rule';
         if (isAutoCategorized) {
           autoCategorized += 1;
         }
-
-          if (categoryId && categoryId !== reviewCategoryId) {
-            registerSuggestion(
-              suggestionIndex,
-              accountIdentifierForMatch,
-              row.normalizedDescription,
-              row.amountMinor,
-              categoryId,
-            );
-            if (historyMatchKey) {
-              historyMatchIndex.set(historyMatchKey, categoryId);
-            }
-          }
-
-          if (accountId) {
-            const month = row.date.getUTCMonth() + 1;
-            const year = row.date.getUTCFullYear();
-            const key = `${accountId}|${year}|${month}`;
-            if (!reconciliationTargets.has(key)) {
-              reconciliationTargets.set(key, {
-                accountId,
-                month,
-                year,
-                ledgerId,
-              });
-            }
-          }
-
-        let suggestedMainName: string | null = null;
-        let suggestedSubName: string | null = null;
-
-        if (categoryId === reviewCategoryId) {
-          const reviewLabel = categoryNameLookup.get(reviewCategoryId) ?? 'Needs manual categorization';
-          const split = splitCategoryLabel(reviewLabel);
-          suggestedMainName = split.main ?? 'Review';
-          suggestedSubName = split.sub ?? reviewLabel;
-        } else if (categoryId) {
-          const categoryLabel = categoryNameLookup.get(categoryId) ?? null;
-          const split = splitCategoryLabel(categoryLabel);
-          suggestedMainName = split.main ?? categoryLabel;
-          suggestedSubName = split.sub ?? categoryLabel;
-        }
-
-        const baseRaw = (row.raw ?? {}) as Record<string, unknown>;
-        const canonicalColumns: Record<string, unknown> = {
-          'Name / Description': row.description,
-          Account: row.accountIdentifier,
-          Counterparty: row.counterparty ?? baseRaw['Counterparty'] ?? null,
-          Code: baseRaw['Code'] ?? null,
-          'Debit/credit': baseRaw['Debit/credit'] ?? (direction === 'credit' ? 'Credit' : 'Debit'),
-          'Amount (EUR)': Number(row.amountMinor) / 100,
-          'Transaction type': baseRaw['Transaction type'] ?? row.source,
-          Notifications: baseRaw['Notifications'] ?? baseRaw['Notification'] ?? null,
-        };
-
-        const existingColumns =
-          typeof baseRaw.columns === 'object' && baseRaw.columns && !Array.isArray(baseRaw.columns)
-            ? (baseRaw.columns as Record<string, unknown>)
-            : {};
-
-        const flattenedRaw = toJsonObject(
-          Object.fromEntries(
-            Object.entries(baseRaw).filter(([key]) => key !== 'columns' && key !== 'suggestion'),
-          ),
-        );
-
-        const rawColumns = toJsonObject({
-          ...existingColumns,
-          ...flattenedRaw,
-          ...canonicalColumns,
-        });
-
-        const rawPayload: Prisma.InputJsonValue = {
-          ...flattenedRaw,
-          columns: rawColumns,
-          suggestion: {
-            confidence: suggestionConfidence,
-            matchedCategoryId: categoryId,
-            matchedBy: classificationSource,
-            mainCategoryName: suggestedMainName,
-            categoryName: suggestedSubName,
-          },
-        };
 
         records.push({
           userId,
@@ -900,13 +1086,41 @@ export const processImportBufferWithClient = async (
           reference: row.reference,
           hash: row.hash,
           sourceFile: filename,
-          rawRow: rawPayload,
-          categoryId,
-          classificationSource,
-          classificationRuleId,
+          rawRow: classification.rawPayload,
+          categoryId: classification.categoryId,
+          classificationSource: classification.classificationSource,
+          classificationRuleId: classification.classificationRuleId,
           createdAt: now,
           updatedAt: now,
+          importFingerprint: row.importFingerprint,
         });
+
+        if (classification.categoryId && classification.categoryId !== reviewCategoryId) {
+          registerSuggestion(
+            suggestionIndex,
+            accountIdentifierForMatch,
+            row.normalizedDescription,
+            row.amountMinor,
+            classification.categoryId,
+          );
+          if (historyMatchKey) {
+            historyMatchIndex.set(historyMatchKey, classification.categoryId);
+          }
+        }
+
+        if (accountId) {
+          const month = row.date.getUTCMonth() + 1;
+          const year = row.date.getUTCFullYear();
+          const key = `${accountId}|${year}|${month}`;
+          if (!reconciliationTargets.has(key)) {
+            reconciliationTargets.set(key, {
+              accountId,
+              month,
+              year,
+              ledgerId,
+            });
+          }
+        }
       }
 
       if (!records.length) {
@@ -921,7 +1135,7 @@ export const processImportBufferWithClient = async (
       imported += created.count;
     }
 
-    const duplicateCount = duplicates.length + (uniques.length - imported);
+    const duplicateCount = Math.max(0, duplicates.length - reprocessed) + (uniques.length - imported);
     const pendingReview = imported;
 
     for (const target of reconciliationTargets.values()) {

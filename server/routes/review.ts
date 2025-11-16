@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prismaClient';
+import { clearReviewQueue as clearReviewQueueForUser } from '../services/reviewQueueService';
 
 const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID ?? 'demo-user';
 
@@ -113,5 +114,17 @@ export const updateTransactionCategory = async (req: Request, res: Response) => 
   } catch (error) {
     console.error('Category update failed', error);
     return res.status(500).json({ error: 'Failed to update category.' });
+  }
+};
+
+export const clearReviewQueue = async (req: Request, res: Response) => {
+  const userId = req.header('x-user-id') ?? DEFAULT_USER_ID;
+
+  try {
+    const cleared = await prisma.$transaction((tx) => clearReviewQueueForUser(tx, userId));
+    return res.json({ cleared });
+  } catch (error) {
+    console.error('Clear review queue failed', error);
+    return res.status(500).json({ error: 'Failed to clear review queue.' });
   }
 };

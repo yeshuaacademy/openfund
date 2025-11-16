@@ -1,14 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ImportSummary } from '../../lib/import/types';
 import { processImportBufferWithClient } from '../../server/services/importService';
+import * as categorizationService from '../../server/services/categorizationService';
 
 type StoredTransaction = {
   id: string;
   userId: string;
   hash: string;
+  importFingerprint: string | null;
   amountMinor: bigint;
   source: string;
   normalizedKey: string;
@@ -17,6 +19,7 @@ type StoredTransaction = {
   accountId?: string | null;
   rawRow?: Record<string, unknown> | null;
   classificationSource?: string;
+  classificationRuleId?: string | null;
 };
 
 class FakePrismaClient {
@@ -119,7 +122,14 @@ class FakePrismaClient {
           if (where?.hash?.in) {
             return this.transactions
               .filter((tx) => where.hash.in.includes(tx.hash))
-              .map((tx) => ({ hash: tx.hash }));
+              .map((tx) => ({
+                id: tx.id,
+                hash: tx.hash,
+                importFingerprint: tx.importFingerprint,
+                classificationSource: tx.classificationSource,
+                classificationRuleId: tx.classificationRuleId ?? null,
+                categoryId: tx.categoryId,
+              }));
           }
 
           if (where?.userId && where?.source) {
@@ -184,6 +194,7 @@ class FakePrismaClient {
               id: entry.id ?? crypto.randomUUID(),
               userId: entry.userId,
               hash: entry.hash,
+              importFingerprint: entry.importFingerprint ?? null,
               amountMinor: BigInt(entry.amountMinor),
               source: entry.source,
               normalizedKey: entry.normalizedKey,
@@ -192,12 +203,42 @@ class FakePrismaClient {
               accountId: entry.accountId ?? null,
               rawRow: entry.rawRow ?? null,
               classificationSource: entry.classificationSource ?? 'none',
+              classificationRuleId: entry.classificationRuleId ?? null,
             });
             count += 1;
           });
 
           return { count };
         },
+        update: async ({ where, data }: any) => {
+          const record = this.transactions.find((tx) => tx.id === where.id);
+          if (!record) {
+            return null;
+          }
+          if (data.categoryId !== undefined) {
+            record.categoryId = data.categoryId;
+          }
+          if (data.classificationSource) {
+            record.classificationSource = data.classificationSource;
+          }
+          if (data.classificationRuleId !== undefined) {
+            record.classificationRuleId = data.classificationRuleId;
+          }
+          if (data.rawRow !== undefined) {
+            record.rawRow = data.rawRow;
+          }
+          if (data.importFingerprint) {
+            record.importFingerprint = data.importFingerprint;
+          }
+          return record;
+        },
+      },
+      category: {
+        findMany: async () => [],
+        upsert: async ({ where }: any) => ({
+          id: `category-${where.name}`,
+          name: where.name,
+        }),
       },
       importBatch: {
         create: async ({ data }: any) => {
@@ -249,6 +290,9 @@ describe('import pipeline integration', () => {
   beforeEach(() => {
     prisma = new FakePrismaClient();
   });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   const runImport = (filename: string): Promise<ImportSummary> =>
     processImportBufferWithClient(prisma as any, {
@@ -257,13 +301,75 @@ describe('import pipeline integration', () => {
       userId: 'demo-user',
     });
 
-  it('imports transactions once and skips duplicates on re-import', async () => {
+  it('reprocesses pending transactions on re-import without creating duplicates', async () => {
+    const categorizeSpy = vi.spyOn(categorizationService, 'categorizeTransaction').mockResolvedValue({
+      categoryId: 'cat-initial',
+      classificationSource: 'rule',
+      ruleId: 'rule-1',
+    } as any);
+
     const first = await runImport('statement.csv');
     expect(first.importedCount).toBeGreaterThan(0);
-    expect(first.duplicateCount).toBe(0);
+    expect(prisma.transactions).toHaveLength(first.importedCount);
+
+    categorizeSpy.mockResolvedValue({
+      categoryId: 'cat-updated',
+      classificationSource: 'rule',
+      ruleId: 'rule-2',
+    });
 
     const second = await runImport('statement.csv');
     expect(second.importedCount).toBe(0);
-    expect(second.duplicateCount).toBeGreaterThan(0);
+    expect(second.duplicateCount).toBe(0);
+    expect(prisma.transactions).toHaveLength(first.importedCount);
+    expect(prisma.transactions.every((tx) => typeof tx.importFingerprint === 'string' && tx.importFingerprint.length > 0)).toBe(true);
+  });
+
+  it('preserves manual overrides when re-importing the same CSV', async () => {
+    vi.spyOn(categorizationService, 'categorizeTransaction').mockResolvedValue({
+      categoryId: 'cat-auto',
+      classificationSource: 'rule',
+      ruleId: 'rule-1',
+    } as any);
+
+    await runImport('statement.csv');
+    const manualTx = prisma.transactions[0];
+    manualTx.classificationSource = 'manual';
+    manualTx.categoryId = 'cat-manual';
+
+    (categorizationService.categorizeTransaction as any).mockResolvedValue({
+      categoryId: 'cat-next',
+      classificationSource: 'rule',
+      ruleId: 'rule-2',
+    });
+
+    const second = await runImport('statement.csv');
+    expect(second.importedCount).toBe(0);
+    expect(manualTx.categoryId).toBe('cat-manual');
+    expect(manualTx.classificationSource).toBe('manual');
+  });
+
+  it('allows clearing queue and re-importing with updated rules', async () => {
+    const categorizeSpy = vi.spyOn(categorizationService, 'categorizeTransaction').mockResolvedValue({
+      categoryId: 'cat-first',
+      classificationSource: 'rule',
+      ruleId: 'rule-1',
+    } as any);
+
+    const first = await runImport('statement.csv');
+    expect(prisma.transactions).toHaveLength(first.importedCount);
+
+    // Simulate clearing review queue
+    prisma.transactions = [];
+
+    categorizeSpy.mockResolvedValue({
+      categoryId: 'cat-second',
+      classificationSource: 'rule',
+      ruleId: 'rule-2',
+    });
+
+    const second = await runImport('statement.csv');
+    expect(second.importedCount).toBe(first.importedCount);
+    expect(prisma.transactions).toHaveLength(first.importedCount);
   });
 });
