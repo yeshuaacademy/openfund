@@ -11,7 +11,7 @@ import {
   downloadExportPayload,
   blobToBase64,
 } from '@/helpers/export-utils';
-import { Mail } from 'lucide-react';
+import { Download, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type ExportActionsProps = {
@@ -54,10 +54,11 @@ export function ExportActions({ getExportPayload, context }: ExportActionsProps)
       </Button>
       <Button
         type="button"
-        className={LEDGER_PRIMARY_BUTTON_CLASSES}
+        className={`${LEDGER_PRIMARY_BUTTON_CLASSES} gap-2`}
         onClick={handleExport}
         disabled={!hasHandler || isExporting}
       >
+        <Download className="h-4 w-4" />
         {isExporting ? 'Preparing…' : 'Export'}
       </Button>
       <NotifySubscribersDialog
