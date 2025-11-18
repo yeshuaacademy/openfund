@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
@@ -15,6 +15,11 @@ import {
 import { useLedger } from '@/context/ledger-context';
 import type { Category, CategoryTree, LedgerTransaction } from '@/context/ledger-context';
 import { CalendarDays, Download, Settings, SlidersHorizontal } from 'lucide-react';
+import { PageHeader } from '@/ui/PageHeader';
+import { Section } from '@/ui/Section';
+import { Card } from '@/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   ResponsiveContainer,
   PieChart as RechartsPieChart,
@@ -34,7 +39,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/helpers/utils';
 import { DEFAULT_LOCALE } from '@/constants/intl';
 
-const COLORS = ['#6366F1', '#22D3EE', '#F472B6', '#FBBF24', '#34D399', '#F97316', '#A855F7', '#60A5FA'];
+const COLORS = ['#2970FF', '#5B9CFF', 'rgba(91,156,255,0.45)', 'rgba(255,255,255,0.35)', 'rgba(41,112,255,0.25)'];
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 const euro = new Intl.NumberFormat('nl-NL', {
@@ -80,10 +85,10 @@ const ACCOUNT_FILTER_CONFIG: Record<
 };
 
 const ACCOUNT_FILTER_OPTIONS: Array<{ key: AccountFilterKey; label: string }> = [
-  { key: 'all', label: ACCOUNT_FILTER_CONFIG.all.label },
   { key: 'yeshua', label: ACCOUNT_FILTER_CONFIG.yeshua.label },
   { key: 'vila', label: ACCOUNT_FILTER_CONFIG.vila.label },
   { key: 'savings', label: ACCOUNT_FILTER_CONFIG.savings.label },
+  { key: 'all', label: ACCOUNT_FILTER_CONFIG.all.label },
 ];
 
 const normalizeAccountValue = (value?: string | null) => value?.trim().toLowerCase() ?? '';
@@ -137,10 +142,10 @@ const filterTransactionsByAccount = (
 };
 
 const ACCOUNT_COLOR_MAP: Record<AccountFilterKey, string> = {
-  all: '#6366F1',
-  yeshua: '#6366F1',
-  vila: '#F97316',
-  savings: '#22D3EE',
+  all: '#2970FF',
+  yeshua: '#5B9CFF',
+  vila: 'rgba(91,156,255,0.55)',
+  savings: 'rgba(255,255,255,0.45)',
 };
 
 type AccountBreakdownEntry = {
@@ -258,6 +263,36 @@ function LedgerPageContent() {
   );
   const searchParams = useSearchParams();
   const view = (searchParams?.get('view') ?? 'dashboard') as 'dashboard' | 'transactions' | 'cashflow' | 'overview';
+  const [overviewExportHandler, setOverviewExportHandler] = useState<(() => void) | null>(null);
+  const [cashflowExportHandler, setCashflowExportHandler] = useState<(() => void) | null>(null);
+  const [dashboardExportHandler, setDashboardExportHandler] = useState<(() => void) | null>(null);
+  const registerOverviewExportHandler = useCallback((handler: (() => void) | null) => {
+    setOverviewExportHandler(() => handler);
+  }, []);
+  const registerCashflowExportHandler = useCallback((handler: (() => void) | null) => {
+    setCashflowExportHandler(() => handler);
+  }, []);
+  const registerDashboardExportHandler = useCallback((handler: (() => void) | null) => {
+    setDashboardExportHandler(() => handler);
+  }, []);
+
+  useEffect(() => {
+    if (view !== 'overview') {
+      setOverviewExportHandler(null);
+    }
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== 'cashflow') {
+      setCashflowExportHandler(null);
+    }
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== 'dashboard') {
+      setDashboardExportHandler(null);
+    }
+  }, [view]);
 
   const dashboardBreakdown = useMemo(() => buildSpendingBreakdown(approvedTransactions), [approvedTransactions]);
   const dashboardLines = useMemo(() => buildLineData(approvedTransactions), [approvedTransactions]);
@@ -272,7 +307,12 @@ function LedgerPageContent() {
           subtitle: 'Review income and spending by category for any month or custom range.',
           actions: (
             <div className="flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => overviewExportHandler?.()}
+                disabled={!overviewExportHandler}
+              >
                 <Download className="h-4 w-4" /> Export
               </button>
             </div>
@@ -284,9 +324,13 @@ function LedgerPageContent() {
           subtitle: 'Browse, filter, and export every line in your ledger.',
           actions: (
             <div className="flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 rounded-xl border border-[#2970FF] bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1f5de0]">
+              <a
+                href="/api/ledger/export-xlsx"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#2970FF] bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1f5de0] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                role="button"
+              >
                 <Download className="h-4 w-4" /> Export
-              </button>
+              </a>
             </div>
           ),
         };
@@ -296,7 +340,12 @@ function LedgerPageContent() {
           subtitle: 'Visualise net income trends across months to stay ahead.',
           actions: (
             <div className="flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 rounded-xl border border-[#2970FF] bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1f5de0]">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#2970FF] bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1f5de0] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => cashflowExportHandler?.()}
+                disabled={!cashflowExportHandler}
+              >
                 <Download className="h-4 w-4" /> Export
               </button>
             </div>
@@ -308,27 +357,37 @@ function LedgerPageContent() {
           subtitle: 'Visualize how your ledger is performing at a glance.',
           actions: (
             <div className="flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
-                <Settings className="h-4 w-4" /> Customize
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => dashboardExportHandler?.()}
+                disabled={!dashboardExportHandler}
+              >
                 <Download className="h-4 w-4" /> Export
               </button>
             </div>
           ),
         };
     }
-  }, [view]);
+  }, [view, overviewExportHandler, cashflowExportHandler, dashboardExportHandler]);
 
   const content = useMemo(() => {
     if (view === 'transactions') {
       return <TransactionsView transactions={transactions} categoryTree={categoryTree} />;
     }
     if (view === 'cashflow') {
-      return <CashFlowView cashflow={dashboardCashFlow} />;
+      return (
+        <CashFlowView cashflow={dashboardCashFlow} onRegisterExportHandler={registerCashflowExportHandler} />
+      );
     }
     if (view === 'overview') {
-      return <MonthlyOverviewView transactions={approvedTransactions} categoryTree={categoryTree} />;
+      return (
+        <MonthlyOverviewView
+          transactions={approvedTransactions}
+          categoryTree={categoryTree}
+          onRegisterExportHandler={registerOverviewExportHandler}
+        />
+      );
     }
     return (
       <DashboardView
@@ -337,6 +396,7 @@ function LedgerPageContent() {
         comparison={dashboardLines}
         cashflow={dashboardCashFlow}
         planned={dashboardPlanned}
+        onRegisterExportHandler={registerDashboardExportHandler}
       />
     );
   }, [
@@ -363,39 +423,68 @@ function DashboardView({
   comparison,
   cashflow,
   planned,
+  onRegisterExportHandler,
 }: {
   summary: SummaryValues;
   spendingBreakdown: BreakdownEntry[];
   comparison: LineDatum[];
   cashflow: CashFlowDatum[];
   planned: PlannedSummary[];
+  onRegisterExportHandler?: (handler: (() => void) | null) => void;
 }) {
+  const exportHandler = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const html = buildDashboardExportHtml({
+      breakdown: spendingBreakdown,
+      comparison,
+      cashflow,
+      planned,
+      summary,
+    });
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `performance-summary-${new Date().toISOString().slice(0, 10)}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [spendingBreakdown, comparison, cashflow, planned, summary]);
+
+  useEffect(() => {
+    if (!onRegisterExportHandler) return;
+    onRegisterExportHandler(exportHandler);
+    return () => onRegisterExportHandler(null);
+  }, [exportHandler, onRegisterExportHandler]);
+
   return (
     <div className="space-y-6">
       <section className="grid gap-6 xl:grid-cols-[1.5fr,2fr]">
-        <SummaryCard title="Spending Breakdown" subtitle="Where your money goes">
+        <Section title="Spending Breakdown" description="Where your money goes" contentClassName="space-y-4">
           <SpendingBreakdownCard data={spendingBreakdown} />
-        </SummaryCard>
-        <SummaryCard
-          title="Spending Comparison"
-          subtitle="Track this period against the previous"
-          action={
+        </Section>
+        <Section contentClassName="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <h2 className="text-sm font-medium text-white">Spending Comparison</h2>
+              <p className="text-xs text-white/60">Track this period against the previous</p>
+            </div>
             <button className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
               This Month vs Last Month <CalendarDays className="h-3.5 w-3.5" />
             </button>
-          }
-        >
+          </div>
           <SpendingComparisonChart data={comparison} />
-        </SummaryCard>
+        </Section>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <SummaryCard title="Planned Income & Expenses" subtitle="Compare planned vs actual">
+        <Section title="Planned Income & Expenses" description="Compare planned vs actual" contentClassName="space-y-4">
           <PlannedIncomeExpensesCard data={planned} />
-        </SummaryCard>
-        <SummaryCard title="Cash Flow" subtitle="Net income across the last six months">
+        </Section>
+        <Section title="Cash Flow" description="Net income across the last six months" contentClassName="space-y-4">
           <CashFlowChart data={cashflow} />
-        </SummaryCard>
+        </Section>
       </section>
     </div>
   );
@@ -404,9 +493,11 @@ function DashboardView({
 function MonthlyOverviewView({
   transactions,
   categoryTree,
+  onRegisterExportHandler,
 }: {
   transactions: LedgerTransaction[];
   categoryTree: CategoryTree;
+  onRegisterExportHandler?: (handler: (() => void) | null) => void;
 }) {
   const latestDate = useMemo(() => {
     let latest: number | null = null;
@@ -437,7 +528,7 @@ function MonthlyOverviewView({
   const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
   const [customFrom, setCustomFrom] = useState<string>(defaultRange.start);
   const [customTo, setCustomTo] = useState<string>(defaultRange.end);
-  const [accountFilter, setAccountFilter] = useState<AccountFilterKey>('all');
+  const [accountFilter, setAccountFilter] = useState<AccountFilterKey>('yeshua');
 
   useEffect(() => {
     setSelectedMonth(defaultMonth);
@@ -541,6 +632,7 @@ function MonthlyOverviewView({
   }, [mode, selectedMonth, selectedYear, customFrom, customTo]);
 
   const showAccountBreakdown = accountFilter === 'all';
+  const accountLabel = ACCOUNT_FILTER_CONFIG[accountFilter]?.label ?? ACCOUNT_FILTER_CONFIG.all.label;
 
   const accountBreakdown = useMemo(() => {
     const baseOrder: AccountFilterKey[] = ['yeshua', 'vila', 'savings'];
@@ -603,15 +695,70 @@ function MonthlyOverviewView({
     return totals;
   }, [accountFilter, totals, accountBreakdown]);
 
+  const totalTransactions = heroTotals.count;
+  const totalIncome = heroTotals.income;
+  const totalExpenses = heroTotals.expenses;
+  const totalNet = heroTotals.net;
+
   const showCategoryBreakdown = accountFilter !== 'all';
+
+  const handleExport = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const identifier =
+      mode === 'month'
+        ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+        : `${customFrom || 'start'}-${customTo || 'end'}`;
+    const html = buildMonthlyOverviewExportHtml({
+      accountLabel,
+      periodLabel,
+      mode,
+      selectedMonth,
+      selectedYear,
+      customFrom,
+      customTo,
+      transactionsCount: totalTransactions,
+      totals: { income: totalIncome, expenses: totalExpenses, net: totalNet },
+      aggregates,
+    });
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileAccount = sanitizeForFilename(accountLabel) || 'ledger';
+    const fileIdentifier = sanitizeForFilename(identifier) || 'period';
+    link.download = `monthly-overview-${fileAccount}-${fileIdentifier}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [
+    accountLabel,
+    periodLabel,
+    mode,
+    selectedMonth,
+    selectedYear,
+    customFrom,
+    customTo,
+    totalTransactions,
+    totalIncome,
+    totalExpenses,
+    totalNet,
+    aggregates,
+  ]);
+
+  useEffect(() => {
+    if (!onRegisterExportHandler) return;
+    onRegisterExportHandler(handleExport);
+    return () => onRegisterExportHandler(null);
+  }, [handleExport, onRegisterExportHandler]);
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-white/5 bg-[#060F1F]/60 p-6 shadow-inner shadow-black/30">
-        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+      <Section contentClassName="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-white/60">Accounts</span>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {ACCOUNT_FILTER_OPTIONS.map(({ key, label }) => {
                 const selected = accountFilter === key;
                 return (
@@ -642,62 +789,73 @@ function MonthlyOverviewView({
             </button>
           ) : null}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <FilterSelect
-            label="View mode"
-            value={mode}
-            onChange={(value) => setMode(value as 'month' | 'custom')}
-            options={[
-              { id: 'month', name: 'Month' },
-              { id: 'custom', name: 'Custom range' },
-            ]}
-          />
-          {mode === 'month' ? (
-            <>
-              <FilterSelect
-                label="Month"
-                value={String(selectedMonth)}
-                onChange={(value) => setSelectedMonth(Number(value))}
-                options={MONTH_OPTIONS}
-              />
-              <FilterSelect
-                label="Year"
-                value={String(selectedYear)}
-                onChange={(value) => setSelectedYear(Number(value))}
-                options={availableYears.map((year) => ({ id: String(year), name: String(year) }))}
-              />
-            </>
-          ) : (
-            <>
-              <DateInput label="From" value={customFrom} onChange={setCustomFrom} max={customTo || undefined} />
-              <DateInput label="Until" value={customTo} onChange={setCustomTo} min={customFrom || undefined} />
-            </>
-          )}
-        </div>
-      </div>
-
-      <SummaryCard title="Period Summary" subtitle={periodLabel}>
-        <div className="space-y-6">
-          <OverviewHeroTotals totals={heroTotals} />
-          {showAccountBreakdown ? (
-            <AccountBreakdownChart breakdown={accountBreakdown} />
-          ) : null}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <OverviewSummaryCard label="Transactions" value={heroTotals.count} tone="neutral" isCurrency={false} />
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <FilterSelect
+              label="View mode"
+              value={mode}
+              onChange={(value) => setMode(value as 'month' | 'custom')}
+              options={[
+                { id: 'month', name: 'Month' },
+                { id: 'custom', name: 'Custom range' },
+              ]}
+            />
+            {mode === 'month' ? (
+              <>
+                <FilterSelect
+                  label="Month"
+                  value={String(selectedMonth)}
+                  onChange={(value) => setSelectedMonth(Number(value))}
+                  options={MONTH_OPTIONS}
+                />
+                <FilterSelect
+                  label="Year"
+                  value={String(selectedYear)}
+                  onChange={(value) => setSelectedYear(Number(value))}
+                  options={availableYears.map((year) => ({ id: String(year), name: String(year) }))}
+                />
+              </>
+            ) : (
+              <>
+                <DateInput label="From" value={customFrom} onChange={setCustomFrom} max={customTo || undefined} />
+                <DateInput label="Until" value={customTo} onChange={setCustomTo} min={customFrom || undefined} />
+              </>
+            )}
           </div>
-          {!filteredTransactions.length ? (
-            <p className="text-sm text-white/60">No transactions found for this period.</p>
-          ) : null}
+          <div className="min-w-[160px] rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-right text-white">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/60">Transactions</p>
+            <p className="text-2xl font-semibold">
+              {heroTotals.count.toLocaleString(DEFAULT_LOCALE)}
+            </p>
+          </div>
         </div>
-      </SummaryCard>
+      </Section>
+
+      <Section title="Period Summary" description={periodLabel} contentClassName="space-y-6">
+        <OverviewHeroTotals totals={heroTotals} />
+        {!filteredTransactions.length ? (
+          <p className="text-sm text-white/60">No transactions found for this period.</p>
+        ) : null}
+      </Section>
+
+      {showAccountBreakdown ? (
+        <Section
+          title="Account Contribution"
+          description="Share of total income and expenses in this period."
+          contentClassName="space-y-0"
+        >
+          <AccountBreakdownChart breakdown={accountBreakdown} />
+        </Section>
+      ) : null}
 
       {showCategoryBreakdown ? (
-        <SummaryCard
+        <Section
           title="Category Breakdown"
-          subtitle="Income and expenses grouped by main and sub category."
+          description="Income and expenses grouped by main and sub category."
+          contentClassName="space-y-4"
         >
           <MonthlyTotalsTable aggregates={aggregates} totals={totals} />
-        </SummaryCard>
+        </Section>
       ) : null}
     </div>
   );
@@ -738,35 +896,21 @@ function OverviewHeroTotals({
   ];
 
   const toneText: Record<'positive' | 'negative' | 'neutral', string> = {
-    positive: 'text-emerald-200',
-    negative: 'text-rose-200',
-    neutral: 'text-sky-200',
-  };
-
-  const toneGlow: Record<'positive' | 'negative' | 'neutral', string> = {
-    positive: 'bg-emerald-400/35',
-    negative: 'bg-rose-400/35',
-    neutral: 'bg-sky-400/35',
+    positive: 'text-emerald-400',
+    negative: 'text-rose-400',
+    neutral: 'text-white',
   };
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {cards.map(({ key, label, value, tone, sublabel }) => (
-        <div
-          key={key}
-          className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#070F1F]/85 p-6 shadow-[0_25px_80px_-60px_rgba(41,112,255,0.8)]"
-        >
-          <div
-            className={cn(
-              'pointer-events-none absolute -right-16 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full blur-3xl',
-              toneGlow[tone],
-            )}
-            aria-hidden
-          />
+        <Card key={key} className="relative overflow-hidden border-white/5 bg-[#09142A] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/50">{label}</p>
-          <p className={cn('mt-4 text-4xl font-bold tracking-tight md:text-5xl', toneText[tone])}>{value}</p>
-          {sublabel ? <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-white/50">{sublabel}</p> : null}
-        </div>
+          <p className={cn('mt-3 text-3xl font-semibold tracking-tight md:text-4xl', toneText[tone])}>{value}</p>
+          {sublabel ? (
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-white/60">{sublabel}</p>
+          ) : null}
+        </Card>
       ))}
     </div>
   );
@@ -795,97 +939,80 @@ function AccountBreakdownChart({ breakdown }: { breakdown: AccountBreakdownEntry
   }, [entries]);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#051025]/90">
-      <div className="grid items-stretch gap-0 lg:grid-cols-[1.7fr,1fr]">
-        <div className="flex flex-col">
-          <div className="px-6 pt-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/50">Account Contribution</h3>
-            <p className="mt-1 text-xs text-white/50">Share of total income and expenses in this period.</p>
-          </div>
-          <div className="flex-1 px-4 pb-6 pt-4 sm:px-6">
-            {hasActivity ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  barSize={28}
-                  margin={{ top: 12, right: 16, left: -12, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.45)" tickLine={false} axisLine={false} />
-                  <YAxis
-                    stroke="rgba(255,255,255,0.35)"
-                    tickFormatter={(value) => euro.format(value as number)}
-                    tickLine={false}
-                    axisLine={false}
+    <div className="grid items-start gap-6 lg:grid-cols-[1.6fr,1fr]">
+      <div className="flex flex-col">
+        <div className="flex-1 rounded-2xl border border-white/10 bg-[#050B18] p-4">
+          {hasActivity ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={chartData} barSize={28} margin={{ top: 16, right: 16, left: 32, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" tickLine={false} axisLine={false} />
+                <YAxis
+                  stroke="rgba(255,255,255,0.5)"
+                  tickFormatter={(value) => euro.format(value as number)}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <RechartsTooltip
+                  formatter={(value, name) => [euro.format(value as number), labelLookup[name as string] ?? name]}
+                  labelFormatter={(label) => `${label}`}
+                  contentStyle={{
+                    background: '#050B18',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#fff',
+                    fontSize: '12px',
+                  }}
+                  cursor={false}
+                />
+                {entries.map((entry) => (
+                  <Bar
+                    key={entry.key}
+                    dataKey={entry.key}
+                    name={entry.label}
+                    stackId="total"
+                    fill={ACCOUNT_COLOR_MAP[entry.key]}
                   />
-                  <RechartsTooltip
-                    formatter={(value, name) => [euro.format(value as number), labelLookup[name as string] ?? name]}
-                    labelFormatter={(label) => `${label}`}
-                    contentStyle={{
-                      background: '#0A162D',
-                      borderRadius: 12,
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: '#fff',
-                      fontSize: '12px',
-                    }}
-                  />
-                  {entries.map((entry) => (
-                    <Bar
-                      key={entry.key}
-                      dataKey={entry.key}
-                      name={entry.label}
-                      stackId="total"
-                      fill={ACCOUNT_COLOR_MAP[entry.key]}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/10 text-xs text-white/40">
-                No account activity for this period.
-              </div>
-            )}
-          </div>
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-xs text-white/50">
+              No account activity for this period.
+            </div>
+          )}
         </div>
-        <div className="flex flex-col justify-between border-t border-white/10 bg-[#060F1F]/70 lg:border-t-0 lg:border-l">
-          {entries.map((entry) => (
-            <div key={entry.key} className="flex flex-col gap-3 px-6 py-5">
-              <div className="flex items-center justify-between text-sm font-semibold text-white">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: ACCOUNT_COLOR_MAP[entry.key] }}
-                  />
-                  {entry.label}
-                </span>
-                <span className="text-xs font-medium text-white/50">
-                  {entry.count.toLocaleString(DEFAULT_LOCALE)} {entry.count === 1 ? 'transaction' : 'transactions'}
-                </span>
+      </div>
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-[#050B18] p-4">
+        {entries.map((entry) => (
+          <div key={entry.key} className="flex flex-col gap-3 rounded-xl border border-white/5 bg-[#060F1F]/80 p-4">
+            <div className="flex items-center justify-between text-sm font-semibold text-white">
+              <span className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ACCOUNT_COLOR_MAP[entry.key] }} />
+                {entry.label}
+              </span>
+              <span className="text-xs font-medium text-white/60">
+                {entry.count.toLocaleString(DEFAULT_LOCALE)} {entry.count === 1 ? 'transaction' : 'transactions'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-xs uppercase tracking-wide text-white/60">
+              <div>
+                <p>Income</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-400">{euro.format(entry.income)}</p>
               </div>
-              <div className="grid grid-cols-3 gap-3 text-xs uppercase tracking-wide text-white/50">
-                <div>
-                  <p>Income</p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-200">{euro.format(entry.income)}</p>
-                </div>
-                <div>
-                  <p>Expenses</p>
-                  <p className="mt-1 text-sm font-semibold text-rose-200">{euro.format(entry.expenses)}</p>
-                </div>
-                <div>
-                  <p>Net</p>
-                  <p
-                    className={cn(
-                      'mt-1 text-sm font-semibold',
-                      entry.net >= 0 ? 'text-emerald-200' : 'text-rose-200',
-                    )}
-                  >
-                    {euro.format(entry.net)}
-                  </p>
-                </div>
+              <div>
+                <p>Expenses</p>
+                <p className="mt-1 text-sm font-semibold text-rose-400">{euro.format(entry.expenses)}</p>
+              </div>
+              <div>
+                <p>Net</p>
+                <p className={cn('mt-1 text-sm font-semibold', entry.net >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                  {euro.format(entry.net)}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -903,14 +1030,14 @@ function OverviewSummaryCard({
   isCurrency?: boolean;
 }) {
   const toneClass =
-    tone === 'positive' ? 'text-emerald-300' : tone === 'negative' ? 'text-rose-300' : 'text-white';
+    tone === 'positive' ? 'text-emerald-400' : tone === 'negative' ? 'text-rose-400' : 'text-white';
   const formattedValue = isCurrency ? euro.format(value) : value.toLocaleString(DEFAULT_LOCALE);
 
   return (
-    <div className="rounded-xl border border-white/5 bg-[#09142A] p-4">
+    <Card className="p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-white/50">{label}</p>
       <p className={`mt-2 text-2xl font-semibold ${toneClass}`}>{formattedValue}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -926,14 +1053,14 @@ function MonthlyTotalsTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#050B18]/70">
+    <Card className="overflow-hidden p-0">
       <table className="min-w-full divide-y divide-white/10 text-sm">
         <thead className="bg-white/5 text-xs uppercase tracking-wide text-white/60">
           <tr>
-            <th className="px-4 py-3 text-left font-semibold">Category</th>
-            <th className="px-4 py-3 text-right font-semibold">Income</th>
-            <th className="px-4 py-3 text-right font-semibold">Expenses</th>
-            <th className="px-4 py-3 text-right font-semibold">Net</th>
+            <th className="px-4 py-3 text-left font-semibold text-white/70">Category</th>
+            <th className="px-4 py-3 text-right font-semibold text-white/70">Income</th>
+            <th className="px-4 py-3 text-right font-semibold text-white/70">Expenses</th>
+            <th className="px-4 py-3 text-right font-semibold text-white/70">Net</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5 text-white/80">
@@ -943,13 +1070,9 @@ function MonthlyTotalsTable({
               <Fragment key={main.mainId}>
                 <tr className="bg-white/5 text-white">
                   <td className="px-4 py-3 text-sm font-semibold">{main.mainName}</td>
-                  <td className="px-4 py-3 text-right text-emerald-300">{euro.format(main.totalIncome)}</td>
-                  <td className="px-4 py-3 text-right text-rose-300">{euro.format(main.totalExpenses)}</td>
-                  <td
-                    className={`px-4 py-3 text-right ${
-                      net >= 0 ? 'text-emerald-200' : 'text-rose-200'
-                    }`}
-                  >
+                  <td className="px-4 py-3 text-right text-emerald-400">{euro.format(main.totalIncome)}</td>
+                  <td className="px-4 py-3 text-right text-rose-400">{euro.format(main.totalExpenses)}</td>
+                  <td className={`px-4 py-3 text-right ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {euro.format(net)}
                   </td>
                 </tr>
@@ -958,13 +1081,9 @@ function MonthlyTotalsTable({
                   return (
                     <tr key={`${main.mainId}-${child.categoryId}`} className="text-white/80">
                       <td className="px-4 py-2 pl-8">{child.categoryName}</td>
-                      <td className="px-4 py-2 text-right text-emerald-300">{euro.format(child.totalIncome)}</td>
-                      <td className="px-4 py-2 text-right text-rose-300">{euro.format(child.totalExpenses)}</td>
-                      <td
-                        className={`px-4 py-2 text-right ${
-                          childNet >= 0 ? 'text-emerald-200' : 'text-rose-200'
-                        }`}
-                      >
+                      <td className="px-4 py-2 text-right text-emerald-400">{euro.format(child.totalIncome)}</td>
+                      <td className="px-4 py-2 text-right text-rose-400">{euro.format(child.totalExpenses)}</td>
+                      <td className={`px-4 py-2 text-right ${childNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {euro.format(childNet)}
                       </td>
                     </tr>
@@ -977,23 +1096,20 @@ function MonthlyTotalsTable({
         <tfoot className="bg-white/5 text-sm font-semibold text-white">
           <tr>
             <td className="px-4 py-3">Grand Total</td>
-            <td className="px-4 py-3 text-right text-emerald-300">{euro.format(totals.income)}</td>
-            <td className="px-4 py-3 text-right text-rose-300">{euro.format(totals.expenses)}</td>
-            <td
-              className={`px-4 py-3 text-right ${
-                totals.net >= 0 ? 'text-emerald-200' : 'text-rose-200'
-              }`}
-            >
+            <td className="px-4 py-3 text-right text-emerald-400">{euro.format(totals.income)}</td>
+            <td className="px-4 py-3 text-right text-rose-400">{euro.format(totals.expenses)}</td>
+            <td className={`px-4 py-3 text-right ${totals.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {euro.format(totals.net)}
             </td>
           </tr>
         </tfoot>
       </table>
-    </div>
+    </Card>
   );
 }
 
 function TransactionsView({ transactions, categoryTree }: { transactions: LedgerTransaction[]; categoryTree: CategoryTree }) {
+  const { assignCategory } = useLedger();
   const mainOptions = useMemo(() => [
     { id: 'all', name: 'All categories' },
     ...categoryTree.main.filter((cat) => cat.id !== REVIEW_MAIN_ID),
@@ -1045,6 +1161,12 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement | null>(null);
   const [reconciliationStatus, setReconciliationStatus] = useState<'balanced' | 'unreconciled' | 'unknown'>('unknown');
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [editingMainCategoryId, setEditingMainCategoryId] = useState<string>('');
+  const [editingSubCategoryId, setEditingSubCategoryId] = useState<string>('');
+  const [editingCustomCategory, setEditingCustomCategory] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [activeCategoryActionId, setActiveCategoryActionId] = useState<string | null>(null);
 
   const statusBadge = useMemo(() => {
     if (reconciliationStatus === 'balanced') {
@@ -1064,6 +1186,23 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
       tone: 'border-white/20 bg-white/10 text-white/70',
     };
   }, [reconciliationStatus]);
+
+  const editableMainCategories = useMemo(
+    () => categoryTree.main.filter((category) => category.id !== REVIEW_MAIN_ID),
+    [categoryTree.main],
+  );
+
+  const editableSubcategories = useMemo(() => {
+    const map: Record<string, Category[]> = {};
+    Object.entries(categoryTree.byParent).forEach(([parentId, list]) => {
+      if (parentId === REVIEW_MAIN_ID) return;
+      const filtered = list.filter((category) => category.id !== REVIEW_SUB_ID);
+      if (filtered.length) {
+        map[parentId] = filtered;
+      }
+    });
+    return map;
+  }, [categoryTree.byParent]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1188,6 +1327,19 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
     return visibleTransactions.slice(start, start + pageSize);
   }, [visibleTransactions, page, pageSize]);
 
+  useEffect(() => {
+    if (editingTransactionId && !visibleTransactions.some((tx) => tx.id === editingTransactionId)) {
+      setEditingTransactionId(null);
+      setEditingCustomCategory('');
+    }
+  }, [editingTransactionId, visibleTransactions]);
+
+  useEffect(() => {
+    if (editingTransactionId) {
+      setActiveCategoryActionId(null);
+    }
+  }, [editingTransactionId]);
+
   const summary = useMemo(() => calculateSummary(visibleTransactions), [visibleTransactions]);
 
   const startIndex = visibleTransactions.length === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -1213,9 +1365,183 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
     });
   };
 
+  const transactionsSubtitle = `Showing ${visibleTransactions.length === 0 ? 0 : `${startIndex}–${endIndex}`} of ${visibleTransactions.length.toLocaleString(DEFAULT_LOCALE)} records`;
+
+  const startEditing = useCallback((tx: LedgerTransaction) => {
+    setEditingTransactionId(tx.id);
+    setEditingMainCategoryId(tx.mainCategoryId ?? '');
+    setEditingSubCategoryId(tx.categoryId ?? '');
+    setEditingCustomCategory('');
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingTransactionId(null);
+    setEditingCustomCategory('');
+  }, []);
+
+  const handleSaveCategory = useCallback(async () => {
+    if (!editingTransactionId) return;
+    const trimmed = editingCustomCategory.trim();
+    if (!editingMainCategoryId && !editingSubCategoryId && !trimmed) {
+      toast.error('Choose a category or type a new category name.');
+      return;
+    }
+    setIsSavingCategory(true);
+    try {
+      await assignCategory(editingTransactionId, {
+        mainCategoryId: editingMainCategoryId || undefined,
+        categoryId: editingSubCategoryId || undefined,
+        categoryName: trimmed || undefined,
+      });
+      toast.success('Category saved');
+      setEditingTransactionId(null);
+      setEditingCustomCategory('');
+    } catch (error) {
+      console.error(error);
+      toast.error('Unable to save category');
+    } finally {
+      setIsSavingCategory(false);
+    }
+  }, [assignCategory, editingTransactionId, editingMainCategoryId, editingSubCategoryId, editingCustomCategory]);
+
+  const renderCategoryCell = useCallback(
+    (tx: LedgerTransaction, defaultContent: ReactNode) => {
+      const isPending = !tx.categoryId || tx.needsManualCategory;
+      const isEditing = editingTransactionId === tx.id;
+      const showAction = !isPending && !isEditing && activeCategoryActionId === tx.id;
+
+      if (!isEditing) {
+        return (
+          <div
+            className={cn(
+              'relative rounded-lg px-2 py-1 transition',
+              !isPending ? 'cursor-pointer hover:bg-white/5' : '',
+            )}
+            onMouseEnter={() => {
+              if (!isPending) {
+                setActiveCategoryActionId(tx.id);
+              }
+            }}
+            onMouseLeave={() => {
+              if (activeCategoryActionId === tx.id) {
+                setActiveCategoryActionId(null);
+              }
+            }}
+            onClick={() => {
+              if (isPending) return;
+              setActiveCategoryActionId((current) => (current === tx.id ? null : tx.id));
+            }}
+            tabIndex={isPending ? -1 : 0}
+            onFocus={() => {
+              if (!isPending) {
+                setActiveCategoryActionId(tx.id);
+              }
+            }}
+            onBlur={() => {
+              if (activeCategoryActionId === tx.id) {
+                setActiveCategoryActionId(null);
+              }
+            }}
+          >
+            {defaultContent}
+            {showAction ? (
+              <div className="pointer-events-auto absolute right-2 top-2 z-10 rounded-xl border border-white/15 bg-[#050B18]/95 px-2 py-1 shadow-2xl">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-white/80 hover:text-white"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveCategoryActionId(null);
+                    startEditing(tx);
+                  }}
+                >
+                  Edit category
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        );
+      }
+
+      const subOptions = editingMainCategoryId ? editableSubcategories[editingMainCategoryId] ?? [] : [];
+
+      return (
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-white/70">Main category</label>
+            <select
+              className="w-full rounded-xl border border-white/20 bg-[#050B18]/80 px-3 py-2 text-sm text-white shadow-inner shadow-black/30 focus-visible:border-[#5B9CFF] focus-visible:outline-none"
+              value={editingMainCategoryId}
+              onChange={(event) => {
+                setEditingMainCategoryId(event.target.value);
+                setEditingSubCategoryId('');
+              }}
+            >
+              <option value="">Select main category</option>
+              {editableMainCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-white/70">Sub category</label>
+            <select
+              className="w-full rounded-xl border border-white/20 bg-[#050B18]/80 px-3 py-2 text-sm text-white shadow-inner shadow-black/30 focus-visible:border-[#5B9CFF] focus-visible:outline-none disabled:opacity-60"
+              value={editingSubCategoryId}
+              onChange={(event) => setEditingSubCategoryId(event.target.value)}
+              disabled={!editingMainCategoryId}
+            >
+              <option value="">Select sub category</option>
+              {subOptions.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-white/70">
+              New category name (optional)
+            </label>
+            <Input
+              value={editingCustomCategory}
+              onChange={(event) => setEditingCustomCategory(event.target.value)}
+              placeholder="Type to create a new category"
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={handleSaveCategory} disabled={isSavingCategory}>
+              {isSavingCategory ? 'Saving…' : 'Save'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancelEditing} disabled={isSavingCategory}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      );
+    },
+    [
+      activeCategoryActionId,
+      cancelEditing,
+      editableMainCategories,
+      editableSubcategories,
+      editingCustomCategory,
+      editingMainCategoryId,
+      editingSubCategoryId,
+      editingTransactionId,
+      handleSaveCategory,
+      isSavingCategory,
+      startEditing,
+    ],
+  );
+
   return (
     <div className="space-y-6">
-      <div className="sticky top-0 z-20 -mx-6 border-b border-white/5 bg-[#050B18]/95 px-6 py-4 backdrop-blur">
+      <Card className="sticky top-0 z-20 space-y-6 border-white/10 bg-[#050B18]/95 backdrop-blur">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-white/60">Accounts</span>
           <div className="flex flex-wrap gap-2">
@@ -1243,7 +1569,7 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
             {statusBadge.label}
           </span>
         </div>
-        <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <FilterSelect
             label="View mode"
             value={mode}
@@ -1316,18 +1642,13 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
             </button>
           </div>
         </div>
-      </div>
+      </Card>
       <ReconciliationCard onStatusChange={setReconciliationStatus} />
 
-      <section className="rounded-2xl border border-white/5 bg-[#060F1F]/60 p-6 shadow-inner shadow-black/30">
-        <header className="flex flex-wrap items-center justify-between gap-3 pb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Transactions</h2>
-            <p className="text-xs text-white/60">
-              Showing {visibleTransactions.length === 0 ? 0 : `${startIndex}–${endIndex}`} of{' '}
-              {visibleTransactions.length.toLocaleString(DEFAULT_LOCALE)} records
-            </p>
-          </div>
+      <PageHeader
+        title="Transactions"
+        subtitle={transactionsSubtitle}
+        actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative" ref={columnMenuRef}>
               <button
@@ -1381,8 +1702,16 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
               </span>
             </Link>
           </div>
-        </header>
-        <LedgerTable transactions={pagedTransactions} summary={summary} columnVisibility={columnVisibility} />
+        }
+      />
+
+      <Section contentClassName="space-y-4">
+        <LedgerTable
+          transactions={pagedTransactions}
+          summary={summary}
+          columnVisibility={columnVisibility}
+          renderCategoryCell={renderCategoryCell}
+        />
         <PaginationControls
           page={page}
           totalPages={totalPages}
@@ -1390,17 +1719,69 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
           pageSize={pageSize}
           onPageChange={setPage}
         />
-      </section>
+      </Section>
     </div>
   );
 }
 
-function CashFlowView({ cashflow }: { cashflow: CashFlowDatum[] }) {
+function CashFlowView({
+  cashflow,
+  onRegisterExportHandler,
+}: {
+  cashflow: CashFlowDatum[];
+  onRegisterExportHandler?: (handler: (() => void) | null) => void;
+}) {
+  const totals = useMemo(() => {
+    return cashflow.reduce(
+      (acc, entry) => {
+        acc.income += entry.income;
+        acc.expenses += entry.expenses;
+        acc.net += entry.net;
+        return acc;
+      },
+      { income: 0, expenses: 0, net: 0 },
+    );
+  }, [cashflow]);
+  const periodLabel = useMemo(() => {
+    if (!cashflow.length) {
+      return 'No data';
+    }
+    if (cashflow.length === 1) {
+      return cashflow[0].label;
+    }
+    return `${cashflow[0].label} – ${cashflow[cashflow.length - 1].label}`;
+  }, [cashflow]);
+
+  const handleExport = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const html = buildCashFlowExportHtml({
+      data: cashflow,
+      totals,
+      periodLabel,
+    });
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileIdentifier = sanitizeForFilename(periodLabel) || 'cashflow';
+    link.download = `cashflow-${fileIdentifier}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [cashflow, totals, periodLabel]);
+
+  useEffect(() => {
+    if (!onRegisterExportHandler) return;
+    onRegisterExportHandler(handleExport);
+    return () => onRegisterExportHandler(null);
+  }, [handleExport, onRegisterExportHandler]);
+
   return (
     <div className="space-y-6">
-      <SummaryCard title="Cash Flow" subtitle="Net income across the last six months">
+      <Section title="Cash Flow" description="Net income across the last six months" contentClassName="space-y-4">
         <CashFlowChart data={cashflow} />
-      </SummaryCard>
+      </Section>
     </div>
   );
 }
@@ -1503,21 +1884,6 @@ function PaginationControls({
   );
 }
 
-function SummaryCard({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {
-  return (
-    <article className="rounded-2xl border border-white/5 bg-[#060F1F]/60 p-6 shadow-inner shadow-black/30">
-      <header className="flex flex-wrap items-center justify-between gap-3 pb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
-          {subtitle ? <p className="text-xs text-white/60">{subtitle}</p> : null}
-        </div>
-        {action ?? null}
-      </header>
-      {children}
-    </article>
-  );
-}
-
 function SpendingBreakdownCard({ data }: { data: BreakdownEntry[] }) {
   if (!data.length) {
     return <p className="text-sm text-white/50">No expense data available.</p>;
@@ -1526,16 +1892,19 @@ function SpendingBreakdownCard({ data }: { data: BreakdownEntry[] }) {
   const total = data.reduce((acc, entry) => acc + entry.value, 0);
 
   return (
-    <div className="flex flex-col gap-8 md:flex-row md:items-center">
-      <div className="mx-auto h-56 w-full max-w-xs md:mx-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <RechartsPieChart>
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)] lg:gap-8">
+      <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
+        <ResponsiveContainer width="100%" height={220}>
+          <RechartsPieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <RechartsTooltip
               contentStyle={{
                 backgroundColor: '#060F1F',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '0.75rem',
+                color: '#fff',
               }}
+              labelStyle={{ color: '#ffffffcc' }}
+              itemStyle={{ color: '#fff' }}
               formatter={(value: unknown, _name, payload) => [
                 euro.format(Number(value ?? 0)),
                 (payload?.payload as BreakdownEntry | undefined)?.label ?? '',
@@ -1545,9 +1914,10 @@ function SpendingBreakdownCard({ data }: { data: BreakdownEntry[] }) {
               data={data}
               dataKey="value"
               nameKey="label"
-              innerRadius={70}
-              outerRadius={100}
+              innerRadius="60%"
+              outerRadius="82%"
               paddingAngle={3}
+              cornerRadius={10}
             >
               {data.map((entry) => (
                 <Cell key={entry.label} fill={entry.color} />
@@ -1555,16 +1925,21 @@ function SpendingBreakdownCard({ data }: { data: BreakdownEntry[] }) {
             </Pie>
           </RechartsPieChart>
         </ResponsiveContainer>
-        <div className="mt-4 text-center text-sm font-semibold text-white/70">
-          Total spending {euro.format(total)}
+        <div className="pt-2 text-center text-sm text-white/60">
+          Total spending <span className="font-semibold text-white">{euro.format(total)}</span>
         </div>
       </div>
-      <ul className="flex-1 space-y-3 text-sm">
+      <ul className="flex flex-col gap-3 text-sm">
         {data.map((entry) => (
           <li key={entry.label} className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-              <span className="text-white/80">{entry.label}</span>
+              <span
+                className="max-w-[12rem] truncate whitespace-nowrap text-sm font-medium text-white/70"
+                title={entry.label}
+              >
+                {entry.label}
+              </span>
             </div>
             <div className="text-right text-white">
               <div className="text-sm font-semibold">{euro.format(entry.value)}</div>
@@ -1583,50 +1958,63 @@ function SpendingComparisonChart({ data }: { data: LineDatum[] }) {
   }
 
   return (
-    <div className="flex h-64 w-full flex-col">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 16, right: 24, bottom: 8, left: 0 }}>
-          <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
-          <XAxis dataKey="label" stroke="rgba(255,255,255,0.45)" tickLine={false} axisLine={false} />
-          <YAxis
-            stroke="rgba(255,255,255,0.45)"
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(value) => euro.format(Number(value ?? 0))}
+    <div className="mt-6 flex w-full flex-col">
+      <div className="flex flex-1 items-center justify-center">
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={data} margin={{ top: 16, right: 28, bottom: 28, left: 40 }}>
+            <CartesianGrid stroke="rgba(91,156,255,0.2)" strokeDasharray="4 4" />
+            <XAxis
+              dataKey="label"
+              stroke="rgba(255,255,255,0.45)"
+              tickLine={false}
+              axisLine={false}
+            tickMargin={10}
+            interval="preserveStartEnd"
+            minTickGap={20}
           />
-          <RechartsTooltip
-            contentStyle={{
-              backgroundColor: '#060F1F',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '0.75rem',
-            }}
-            formatter={(value: unknown, name) => [euro.format(Number(value ?? 0)), name as string]}
-          />
-          <Legend
-            wrapperStyle={{ color: 'rgba(255,255,255,0.6)' }}
-            iconType="circle"
-            verticalAlign="top"
-            height={24}
-          />
-          <Line
-            type="monotone"
-            dataKey="previous"
-            name="Previous period"
-            stroke="#4D5A7C"
-            strokeWidth={2}
-            dot={false}
-            strokeDasharray="4 4"
-          />
-          <Line
-            type="monotone"
-            dataKey="current"
-            name="Current period"
-            stroke="#5B9CFF"
-            strokeWidth={3}
-            dot={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+            <YAxis
+              stroke="rgba(255,255,255,0.45)"
+              tickLine={false}
+              axisLine={false}
+              width={80}
+              tickMargin={10}
+              tickFormatter={(value) => euro.format(Number(value ?? 0))}
+            />
+            <RechartsTooltip
+              contentStyle={{
+                backgroundColor: '#060F1F',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '0.75rem',
+              }}
+              cursor={false}
+              formatter={(value: unknown, name) => [euro.format(Number(value ?? 0)), name as string]}
+            />
+            <Legend
+              wrapperStyle={{ color: 'rgba(255,255,255,0.6)' }}
+              iconType="circle"
+              verticalAlign="top"
+              height={24}
+            />
+            <Line
+              type="monotone"
+              dataKey="previous"
+              name="Previous period"
+              stroke="rgba(91,156,255,0.45)"
+              strokeWidth={2}
+              dot={false}
+              strokeDasharray="4 4"
+            />
+            <Line
+              type="monotone"
+              dataKey="current"
+              name="Current period"
+              stroke="#5B9CFF"
+              strokeWidth={3}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -1637,68 +2025,69 @@ function CashFlowChart({ data }: { data: CashFlowDatum[] }) {
   }
 
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 16, right: 24, bottom: 8, left: 48 }} barCategoryGap={16}>
-          <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
-          <XAxis
-            dataKey="label"
-            stroke="rgba(255,255,255,0.45)"
-            tickLine={false}
-            axisLine={false}
-            tick={{ fontSize: 12 }}
-          />
-          <YAxis
-            stroke="rgba(255,255,255,0.45)"
-            tickLine={false}
-            axisLine={false}
-            width={88}
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => euro.format(Number(value ?? 0))}
-          />
-          <RechartsTooltip
-            contentStyle={{
-              backgroundColor: '#060F1F',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '0.75rem',
-            }}
-            formatter={(value: unknown, name) => [euro.format(Number(value ?? 0)), name as string]}
-          />
-          <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.6)' }} iconType="circle" />
-          <Bar dataKey="income" name="Income" fill="#5B9CFF" radius={[8, 8, 0, 0]} />
-          <Bar dataKey="expenses" name="Expenses" fill="#FF8A65" radius={[8, 8, 0, 0]} />
-          <Line type="monotone" dataKey="net" name="Net" stroke="#82AFFF" strokeWidth={3} dot={false} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="mt-6 flex w-full items-center justify-center">
+      <div className="w-full">
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={data} margin={{ top: 16, right: 28, bottom: 28, left: 40 }} barCategoryGap={18}>
+            <CartesianGrid stroke="rgba(91,156,255,0.2)" strokeDasharray="4 4" />
+            <XAxis
+              dataKey="label"
+              stroke="rgba(255,255,255,0.45)"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={10}
+            />
+            <YAxis
+              stroke="rgba(255,255,255,0.45)"
+              tickLine={false}
+              axisLine={false}
+              width={88}
+              tickMargin={8}
+              tickFormatter={(value) => euro.format(Number(value ?? 0))}
+            />
+            <RechartsTooltip
+              contentStyle={{
+                backgroundColor: '#060F1F',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '0.75rem',
+              }}
+              cursor={false}
+              formatter={(value: unknown, name) => [euro.format(Number(value ?? 0)), name as string]}
+            />
+            <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.6)' }} iconType="circle" />
+            <Bar dataKey="income" name="Income" fill="#2970FF" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="expenses" name="Expenses" fill="rgba(255,255,255,0.35)" radius={[8, 8, 0, 0]} />
+            <Line type="monotone" dataKey="net" name="Net" stroke="#5B9CFF" strokeWidth={3} dot={false} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
 
 function PlannedIncomeExpensesCard({ data }: { data: PlannedSummary[] }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {data.map((entry) => {
         const ratio = entry.planned === 0 ? 0 : Math.min((entry.actual / entry.planned) * 100, 100);
         const exceeded = entry.planned > 0 && entry.actual > entry.planned;
         return (
-          <div key={entry.label} className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-x-2 text-xs uppercase tracking-wide text-white/50">
-              <span>{entry.label}</span>
-              <span className="font-semibold text-white/60">
-                {euro.format(entry.planned)} planned
-              </span>
+          <div key={entry.label} className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-wide text-white/50">
+              <span className="text-white/70">{entry.label}</span>
+              <span className="font-semibold text-white/60">{euro.format(entry.planned)} planned</span>
             </div>
-            <div className="relative h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
               <div
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#2970FF] to-[#5B9CFF]"
+                className="h-full rounded-full bg-gradient-to-r from-[#2970FF] to-[#5B9CFF]"
                 style={{ width: `${ratio}%` }}
               />
             </div>
-            <div className="flex flex-wrap items-baseline justify-between gap-y-2 text-sm sm:text-base">
-              <div className="text-lg font-semibold text-white sm:text-xl">{euro.format(entry.actual)}</div>
-              <div className="flex items-center gap-2 text-xs font-medium sm:text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm sm:text-base">
+              <div className="text-xl font-semibold text-white sm:text-2xl">{euro.format(entry.actual)}</div>
+              <div className="flex items-center gap-2 text-xs font-medium text-white/70 sm:text-sm">
                 {exceeded ? (
-                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+                  <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-black">
                     Exceeded
                   </span>
                 ) : null}
@@ -1872,6 +2261,155 @@ function buildSpendingBreakdown(transactions: LedgerTransaction[]): BreakdownEnt
   }));
 }
 
+type DashboardExportPayload = {
+  breakdown: BreakdownEntry[];
+  comparison: LineDatum[];
+  cashflow: CashFlowDatum[];
+  planned: PlannedSummary[];
+  summary: SummaryValues;
+};
+
+function buildDashboardExportHtml(payload: DashboardExportPayload): string {
+  const { breakdown, comparison, cashflow, planned, summary } = payload;
+  const breakdownRows =
+    breakdown
+      .map(
+        (entry) => `<tr>
+        <td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(entry.label)}</td>
+        <td align="right" style="padding:10px;border:1px solid #e2e8f0;">${entry.percent.toFixed(1)}%</td>
+        <td align="right" style="padding:10px;border:1px solid #e2e8f0;">${euro.format(entry.value)}</td>
+      </tr>`,
+      )
+      .join('') ||
+    `<tr><td colspan="3" style="padding:12px;text-align:center;border:1px solid #e2e8f0;color:#475569;">No spending data available.</td></tr>`;
+
+  const plannedRows = planned
+    .map(
+      (entry) => `<tr>
+      <td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(entry.label)}</td>
+      <td align="right" style="padding:10px;border:1px solid #e2e8f0;">${euro.format(entry.actual)}</td>
+      <td align="right" style="padding:10px;border:1px solid #e2e8f0;">${euro.format(entry.planned)}</td>
+      <td align="right" style="padding:10px;border:1px solid #e2e8f0;color:${entry.positive ? '#059669' : '#dc2626'};">${entry.positive ? '▲' : '▼'} ${entry.delta.toFixed(1)}%</td>
+    </tr>`,
+    )
+    .join('');
+
+  const comparisonPoints =
+    comparison
+      .map(
+        (point) => `<tr>
+        <td style="padding:8px;border:1px solid #e2e8f0;">${escapeHtml(point.label)}</td>
+        <td align="right" style="padding:8px;border:1px solid #e2e8f0;">${euro.format(point.current)}</td>
+        <td align="right" style="padding:8px;border:1px solid #e2e8f0;">${euro.format(point.previous)}</td>
+      </tr>`,
+      )
+      .join('') || `<tr><td colspan="3" style="padding:12px;text-align:center;border:1px solid #e2e8f0;color:#475569;">No comparison data available.</td></tr>`;
+
+  const cashflowRows =
+    cashflow
+      .map(
+        (entry) => `<tr>
+        <td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(entry.label)}</td>
+        <td align="right" style="padding:10px;border:1px solid #e2e8f0;">${euro.format(entry.income)}</td>
+        <td align="right" style="padding:10px;border:1px solid #e2e8f0;">${euro.format(entry.expenses)}</td>
+        <td align="right" style="padding:10px;border:1px solid #e2e8f0;color:${entry.net >= 0 ? '#059669' : '#dc2626'};">${euro.format(entry.net)}</td>
+      </tr>`,
+      )
+      .join('') || `<tr><td colspan="4" style="padding:12px;text-align:center;border:1px solid #e2e8f0;color:#475569;">No cash flow data available.</td></tr>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Performance Summary Export</title>
+  </head>
+  <body style="margin:0;padding:24px;background:#0b1120;font-family:'Inter','Segoe UI',Arial,sans-serif;color:#0f172a;">
+    <div style="max-width:960px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(15,23,42,0.25);">
+      <h1 style="margin-top:0;font-size:26px;">Performance Summary</h1>
+      <section style="margin-bottom:24px;">
+        <h2 style="font-size:18px;margin-bottom:12px;color:#0f172a;">Overview</h2>
+        <p style="margin:4px 0;"><strong>Total Transactions:</strong> ${summary.total.toLocaleString(DEFAULT_LOCALE)}</p>
+        <p style="margin:4px 0;"><strong>Needs Review:</strong> ${summary.reviewCount.toLocaleString(DEFAULT_LOCALE)}</p>
+        <p style="margin:4px 0;"><strong>Auto Categorized:</strong> ${summary.autoCategorized.toLocaleString(
+          DEFAULT_LOCALE,
+        )}</p>
+        <p style="margin:4px 0;"><strong>Total Amount:</strong> ${summary.totalAmount.toLocaleString(DEFAULT_LOCALE, {
+          style: 'currency',
+          currency: 'EUR',
+          maximumFractionDigits: 2,
+        })}</p>
+      </section>
+
+      <section style="margin-bottom:24px;">
+        <h2 style="font-size:18px;margin-bottom:12px;color:#0f172a;">Spending Breakdown</h2>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:#0f172a;color:#f8fafc;">
+              <th align="left" style="padding:10px;border:1px solid #1e293b;">Category</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Share</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${breakdownRows}
+          </tbody>
+        </table>
+      </section>
+
+      <section style="margin-bottom:24px;">
+        <h2 style="font-size:18px;margin-bottom:12px;color:#0f172a;">Spending Comparison</h2>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:#0f172a;color:#f8fafc;">
+              <th align="left" style="padding:8px;border:1px solid #1e293b;">Date</th>
+              <th align="right" style="padding:8px;border:1px solid #1e293b;">Current Period</th>
+              <th align="right" style="padding:8px;border:1px solid #1e293b;">Previous Period</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${comparisonPoints}
+          </tbody>
+        </table>
+      </section>
+
+      <section style="margin-bottom:24px;">
+        <h2 style="font-size:18px;margin-bottom:12px;color:#0f172a;">Planned Income & Expenses</h2>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:#0f172a;color:#f8fafc;">
+              <th align="left" style="padding:10px;border:1px solid #1e293b;">Label</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Actual</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Planned</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Delta</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${plannedRows}
+          </tbody>
+        </table>
+      </section>
+
+      <section style="margin-bottom:24px;">
+        <h2 style="font-size:18px;margin-bottom:12px;color:#0f172a;">Cash Flow (Last 6 Months)</h2>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:#0f172a;color:#f8fafc;">
+              <th align="left" style="padding:10px;border:1px solid #1e293b;">Month</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Income</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Expenses</th>
+              <th align="right" style="padding:10px;border:1px solid #1e293b;">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cashflowRows}
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </body>
+</html>`;
+}
+
 function buildLineData(transactions: LedgerTransaction[]): LineDatum[] {
   const daily = new Map<string, { income: number; expense: number }>();
 
@@ -1975,4 +2513,370 @@ function calculateSummary(list: LedgerTransaction[]): SummaryValues {
     autoCategorized,
     totalAmount,
   };
+}
+
+type MonthlyOverviewExportOptions = {
+  accountLabel: string;
+  periodLabel: string;
+  mode: 'month' | 'custom';
+  selectedMonth: number;
+  selectedYear: number;
+  customFrom: string;
+  customTo: string;
+  transactionsCount: number;
+  totals: { income: number; expenses: number; net: number };
+  aggregates: CategoryAggregate[];
+};
+
+function buildMonthlyOverviewExportHtml(options: MonthlyOverviewExportOptions): string {
+  const {
+    accountLabel,
+    periodLabel,
+    mode,
+    selectedMonth,
+    selectedYear,
+    customFrom,
+    customTo,
+    transactionsCount,
+    totals,
+    aggregates,
+  } = options;
+  const formatCurrency = (value: number) => euro.format(value);
+  const transactionsLabel = transactionsCount.toLocaleString(DEFAULT_LOCALE);
+  const periodDetails =
+    mode === 'month'
+      ? `<div><strong>Month:</strong> ${escapeHtml(
+          monthNameFormatter.format(new Date(Date.UTC(selectedYear, selectedMonth - 1, 1))),
+        )}</div>
+         <div><strong>Year:</strong> ${selectedYear}</div>`
+      : `<div><strong>From:</strong> ${escapeHtml(formatDisplayDate(customFrom) || 'Not specified')}</div>
+         <div><strong>Until:</strong> ${escapeHtml(formatDisplayDate(customTo) || 'Not specified')}</div>`;
+  const summaryTable = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:20px;font-family:'Inter','Segoe UI',Arial,sans-serif;">
+      <tr>
+        <td style="padding:16px;border:1px solid #e2e8f0;background:#f8fafc;vertical-align:top;width:50%;">
+          <div><strong>Account:</strong> ${escapeHtml(accountLabel)}</div>
+          <div><strong>Period:</strong> ${escapeHtml(periodLabel)}</div>
+          ${periodDetails}
+          <div><strong>Transactions:</strong> ${transactionsLabel}</div>
+        </td>
+        <td style="padding:16px;border:1px solid #e2e8f0;background:#f8fafc;vertical-align:top;width:50%;">
+          <div><strong>Total Income:</strong> ${formatCurrency(totals.income)}</div>
+          <div><strong>Total Expenses:</strong> ${formatCurrency(totals.expenses)}</div>
+          <div style="color:${totals.net >= 0 ? '#059669' : '#dc2626'};"><strong>Net:</strong> ${formatCurrency(
+            totals.net,
+          )}</div>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const categoryRows = aggregates
+    .map((main) => {
+      const net = main.totalIncome - main.totalExpenses;
+      const mainRow = `
+        <tr style="background:#e2e8f0;font-weight:600;color:#0f172a;">
+          <td style="padding:10px;border:1px solid #cbd5f5;">${escapeHtml(main.mainName)}</td>
+          <td align="right" style="padding:10px;border:1px solid #cbd5f5;color:#059669;">${formatCurrency(
+            main.totalIncome,
+          )}</td>
+          <td align="right" style="padding:10px;border:1px solid #cbd5f5;color:#dc2626;">${formatCurrency(
+            main.totalExpenses,
+          )}</td>
+          <td align="right" style="padding:10px;border:1px solid #cbd5f5;color:${net >= 0 ? '#059669' : '#dc2626'};">${formatCurrency(
+        net,
+      )}</td>
+        </tr>
+      `;
+      const childRows = main.children
+        .map((child) => {
+          const childNet = child.totalIncome - child.totalExpenses;
+          return `
+            <tr>
+              <td style="padding:10px;border:1px solid #e2e8f0;">&nbsp;&nbsp;${escapeHtml(child.categoryName)}</td>
+              <td align="right" style="padding:10px;border:1px solid #e2e8f0;color:#059669;">${formatCurrency(
+                child.totalIncome,
+              )}</td>
+              <td align="right" style="padding:10px;border:1px solid #e2e8f0;color:#dc2626;">${formatCurrency(
+                child.totalExpenses,
+              )}</td>
+              <td align="right" style="padding:10px;border:1px solid #e2e8f0;color:${
+                childNet >= 0 ? '#059669' : '#dc2626'
+              };">${formatCurrency(childNet)}</td>
+            </tr>
+          `;
+        })
+        .join('');
+      return mainRow + childRows;
+    })
+    .join('');
+
+  const bodyContent =
+    categoryRows ||
+    `<tr><td colspan="4" style="padding:12px;border:1px solid #e2e8f0;text-align:center;color:#475569;">No categorized transactions for this period.</td></tr>`;
+
+  const totalsRow = `
+    <tfoot>
+      <tr style="background:#0f172a;color:#f8fafc;font-weight:600;">
+        <td style="padding:12px;border:1px solid #0f172a;">Total</td>
+        <td align="right" style="padding:12px;border:1px solid #0f172a;">${formatCurrency(totals.income)}</td>
+        <td align="right" style="padding:12px;border:1px solid #0f172a;">${formatCurrency(totals.expenses)}</td>
+        <td align="right" style="padding:12px;border:1px solid #0f172a;color:${totals.net >= 0 ? '#bbf7d0' : '#fecaca'};">${formatCurrency(
+          totals.net,
+        )}</td>
+      </tr>
+    </tfoot>
+  `;
+
+  const categoryTable = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-family:'Inter','Segoe UI',Arial,sans-serif;">
+      <thead>
+        <tr style="background:#0f172a;color:#f8fafc;">
+          <th align="left" style="padding:10px;border:1px solid #1e293b;">Category</th>
+          <th align="right" style="padding:10px;border:1px solid #1e293b;">Income</th>
+          <th align="right" style="padding:10px;border:1px solid #1e293b;">Expenses</th>
+          <th align="right" style="padding:10px;border:1px solid #1e293b;">Net</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bodyContent}
+      </tbody>
+      ${totalsRow}
+    </table>
+  `;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Monthly Overview Export</title>
+  </head>
+  <body style="margin:0;padding:24px;background:#0b1120;font-family:'Inter','Segoe UI',Arial,sans-serif;color:#0f172a;">
+    <div style="max-width:900px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(15,23,42,0.25);">
+      <h1 style="margin-top:0;margin-bottom:16px;font-size:24px;color:#0f172a;">Monthly Overview</h1>
+      ${summaryTable}
+      ${categoryTable}
+    </div>
+  </body>
+</html>`;
+}
+
+type CashFlowExportOptions = {
+  data: CashFlowDatum[];
+  totals: { income: number; expenses: number; net: number };
+  periodLabel: string;
+};
+
+function buildCashFlowExportHtml({ data, totals, periodLabel }: CashFlowExportOptions): string {
+  const summaryTable = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:20px;font-family:'Inter','Segoe UI',Arial,sans-serif;">
+      <tr>
+        <td style="padding:16px;border:1px solid #e2e8f0;background:#f8fafc;vertical-align:top;width:50%;">
+          <div><strong>Coverage:</strong> ${escapeHtml(periodLabel)}</div>
+          <div><strong>Entries:</strong> ${data.length}</div>
+        </td>
+        <td style="padding:16px;border:1px solid #e2e8f0;background:#f8fafc;vertical-align:top;width:50%;">
+          <div><strong>Total Income:</strong> ${euro.format(totals.income)}</div>
+          <div><strong>Total Expenses:</strong> ${euro.format(totals.expenses)}</div>
+          <div style="color:${totals.net >= 0 ? '#059669' : '#dc2626'};"><strong>Net:</strong> ${euro.format(
+            totals.net,
+          )}</div>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const chartSection = `
+    <div style="margin-bottom:24px;border:1px solid #e2e8f0;border-radius:16px;padding:16px;background:#f8fafc;">
+      <h2 style="margin:0 0 12px 0;font-size:16px;color:#0f172a;">Cash Flow Diagram</h2>
+      ${buildCashFlowChartSvg(data)}
+    </div>
+  `;
+
+  const rows = data
+    .map((entry) => {
+      const net = entry.net;
+      return `
+        <tr>
+          <td style="padding:12px;border:1px solid #e2e8f0;">${escapeHtml(entry.label)}</td>
+          <td align="right" style="padding:12px;border:1px solid #e2e8f0;color:#059669;">${euro.format(
+            entry.income,
+          )}</td>
+          <td align="right" style="padding:12px;border:1px solid #e2e8f0;color:#dc2626;">${euro.format(
+            entry.expenses,
+          )}</td>
+          <td align="right" style="padding:12px;border:1px solid #e2e8f0;color:${
+            net >= 0 ? '#059669' : '#dc2626'
+          };">${euro.format(net)}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  const tableBody =
+    rows ||
+    `<tr><td colspan="4" style="padding:16px;border:1px solid #e2e8f0;text-align:center;color:#475569;">No cash flow data for this period.</td></tr>`;
+
+  const detailsTable = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-family:'Inter','Segoe UI',Arial,sans-serif;">
+      <thead>
+        <tr style="background:#0f172a;color:#f8fafc;">
+          <th align="left" style="padding:12px;border:1px solid #1e293b;">Month</th>
+          <th align="right" style="padding:12px;border:1px solid #1e293b;">Income</th>
+          <th align="right" style="padding:12px;border:1px solid #1e293b;">Expenses</th>
+          <th align="right" style="padding:12px;border:1px solid #1e293b;">Net</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableBody}
+      </tbody>
+      <tfoot>
+        <tr style="background:#0f172a;color:#f8fafc;font-weight:600;">
+          <td style="padding:12px;border:1px solid #0f172a;">Total</td>
+          <td align="right" style="padding:12px;border:1px solid #0f172a;">${euro.format(totals.income)}</td>
+          <td align="right" style="padding:12px;border:1px solid #0f172a;">${euro.format(totals.expenses)}</td>
+          <td align="right" style="padding:12px;border:1px solid #0f172a;color:${totals.net >= 0 ? '#bbf7d0' : '#fecaca'};">${euro.format(
+            totals.net,
+          )}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cash Flow Export</title>
+  </head>
+  <body style="margin:0;padding:24px;background:#0b1120;font-family:'Inter','Segoe UI',Arial,sans-serif;color:#0f172a;">
+    <div style="max-width:900px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(15,23,42,0.25);">
+      <h1 style="margin-top:0;margin-bottom:16px;font-size:24px;color:#0f172a;">Cash Flow Overview</h1>
+      ${summaryTable}
+      ${chartSection}
+      ${detailsTable}
+    </div>
+  </body>
+</html>`;
+}
+
+function buildCashFlowChartSvg(data: CashFlowDatum[]): string {
+  if (!data.length) {
+    return `<div style="padding:24px;text-align:center;color:#475569;background:#ffffff;border-radius:12px;border:1px dashed #cbd5f5;">No cash flow data</div>`;
+  }
+  const width = 900;
+  const height = 360;
+  const marginLeft = 110;
+  const marginRight = 70;
+  const marginTop = 70;
+  const marginBottom = 80;
+  const chartWidth = width - marginLeft - marginRight;
+  const chartHeight = height - marginTop - marginBottom;
+  const segments = Math.max(data.length - 1, 1);
+  const startX = marginLeft + 10;
+  const endX = width - marginRight - 10;
+  const spacing = segments === 0 ? 0 : (endX - startX) / segments;
+  const getBaseX = (index: number) =>
+    data.length === 1 ? (startX + endX) / 2 : startX + spacing * index;
+
+  const incomes = data.map((entry) => entry.income);
+  const expenses = data.map((entry) => entry.expenses);
+  const nets = data.map((entry) => entry.net);
+  const maxPositive = Math.max(
+    Math.max(...incomes, 0),
+    Math.max(...expenses, 0),
+    Math.max(...nets, 0),
+  );
+  const maxNegative = Math.abs(Math.min(...nets, 0));
+  const totalRange = Math.max(maxPositive + maxNegative, 1);
+  const zeroY = marginTop + (maxPositive / totalRange) * chartHeight;
+  const barWidth = Math.min(20, Math.max(10, spacing * 0.14));
+
+  const gridLines = Array.from({ length: 5 }).map((_, index) => {
+    const ratio = index / 4;
+    const y = marginTop + chartHeight * ratio;
+    const value = maxPositive - totalRange * ratio;
+    const label = euro.format(Math.round(value));
+    return `
+      <g>
+        <line x1="${startX - 10}" y1="${y}" x2="${endX + 10}" y2="${y}" stroke="rgba(15,23,42,0.08)" stroke-width="1" />
+        <text x="${marginLeft - 18}" y="${y + 4}" text-anchor="end" font-size="11" fill="#475569">${label}</text>
+      </g>
+    `;
+  });
+
+  const incomeBars = data
+    .map((entry, index) => {
+      const baseX = getBaseX(index);
+      const barHeight = (entry.income / totalRange) * chartHeight;
+      return `<rect x="${baseX - barWidth - 8}" y="${zeroY - barHeight}" width="${barWidth}" height="${barHeight}" fill="#2970FF" rx="6" />`;
+    })
+    .join('');
+
+  const expenseBars = data
+    .map((entry, index) => {
+      const baseX = getBaseX(index);
+      const barHeight = (entry.expenses / totalRange) * chartHeight;
+      return `<rect x="${baseX + 8}" y="${zeroY - barHeight}" width="${barWidth}" height="${barHeight}" fill="rgba(148,163,184,0.65)" rx="6" />`;
+    })
+    .join('');
+
+  const netPoints = data
+    .map((entry, index) => {
+      const baseX = getBaseX(index);
+      const y = zeroY - (entry.net / totalRange) * chartHeight;
+      return `${baseX},${y}`;
+    })
+    .join(' ');
+
+  const netDots = data
+    .map((entry, index) => {
+      const baseX = getBaseX(index);
+      const y = zeroY - (entry.net / totalRange) * chartHeight;
+      return `<circle cx="${baseX}" cy="${y}" r="4" fill="#5B9CFF" stroke="#ffffff" stroke-width="1" />`;
+    })
+    .join('');
+
+  const labels = data
+    .map((entry, index) => {
+      const baseX = getBaseX(index);
+      return `<text x="${baseX}" y="${height - marginBottom / 2 + 6}" text-anchor="middle" font-size="12" fill="#0f172a">${escapeHtml(
+        entry.label,
+      )}</text>`;
+    })
+    .join('');
+
+  return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Cash flow chart">
+    <rect x="0" y="0" width="${width}" height="${height}" rx="14" fill="#ffffff" />
+    ${gridLines.join('')}
+    <line x1="${startX - 10}" y1="${zeroY}" x2="${endX + 10}" y2="${zeroY}" stroke="#cbd5f5" stroke-width="1.5" />
+    ${incomeBars}
+    ${expenseBars}
+    <polyline fill="none" stroke="#5B9CFF" stroke-width="3" points="${netPoints}" stroke-linecap="round" stroke-linejoin="round" />
+    ${netDots}
+    ${labels}
+  </svg>`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      case "'":
+        return '&#39;';
+      default:
+        return char;
+    }
+  });
+}
+
+function sanitizeForFilename(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }

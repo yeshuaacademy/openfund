@@ -72,7 +72,7 @@ export function UploadCsvButton() {
     <>
       <button
         onClick={handleClick}
-        className="btn bg-primary text-white px-4 py-2 rounded-md hover:opacity-90 transition"
+        className="inline-flex items-center justify-center rounded-md border border-transparent bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2970FF]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-70"
         disabled={busy}
       >
         {busy ? 'Importing…' : 'Import Statement'}

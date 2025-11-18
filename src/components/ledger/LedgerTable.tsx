@@ -57,10 +57,12 @@ export function LedgerTable({
   transactions,
   summary,
   columnVisibility,
+  renderCategoryCell,
 }: {
   transactions: LedgerTransaction[];
   summary: LedgerSummary;
   columnVisibility: LedgerColumnVisibility;
+  renderCategoryCell?: (transaction: LedgerTransaction, defaultContent: ReactNode) => ReactNode;
 }) {
   const showAccountInDescription = !columnVisibility.account;
 
@@ -176,23 +178,26 @@ export function LedgerTable({
                   )}
                   {columnVisibility.category && (
                     <Td className="align-top">
-                      {tx.categoryId ? (
-                        <div className="space-y-0.5">
-                          {tx.mainCategoryName && (
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                              {tx.mainCategoryName}
-                            </span>
-                          )}
-                          <div className="text-sm font-medium">
-                            {tx.categoryName ?? tx.mainCategoryName ?? 'Uncategorized'}
+                      {(() => {
+                        const baseContent = tx.categoryId ? (
+                          <div className="space-y-0.5">
+                            {tx.mainCategoryName && (
+                              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                                {tx.mainCategoryName}
+                              </span>
+                            )}
+                            <div className="text-sm font-medium">
+                              {tx.categoryName ?? tx.mainCategoryName ?? 'Uncategorized'}
+                            </div>
+                            {tx.needsManualCategory && (
+                              <FlagPill href="/review">Needs manual review</FlagPill>
+                            )}
                           </div>
-                          {tx.needsManualCategory && (
-                            <FlagPill href="/review">Needs manual review</FlagPill>
-                          )}
-                        </div>
-                      ) : (
-                        <FlagPill href="/review">Needs manual review</FlagPill>
-                      )}
+                        ) : (
+                          <FlagPill href="/review">Needs manual review</FlagPill>
+                        );
+                        return renderCategoryCell ? renderCategoryCell(tx, baseContent) : baseContent;
+                      })()}
                     </Td>
                   )}
                   {columnVisibility.balance && (
