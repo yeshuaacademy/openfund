@@ -14,7 +14,7 @@ import {
 } from '@/components/ledger/LedgerTable';
 import { useLedger } from '@/context/ledger-context';
 import type { Category, CategoryTree, LedgerTransaction } from '@/context/ledger-context';
-import { CalendarDays, Download, Settings, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, SlidersHorizontal } from 'lucide-react';
 import { PageHeader } from '@/ui/PageHeader';
 import { Section } from '@/ui/Section';
 import { Card } from '@/ui/Card';
@@ -38,6 +38,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/helpers/utils';
 import { DEFAULT_LOCALE } from '@/constants/intl';
+import { ExportActions } from '@/components/ledger/ExportActions';
+import type { ExportPayload, ExportEmailContext } from '@/helpers/export-utils';
 
 const COLORS = ['#2970FF', '#5B9CFF', 'rgba(91,156,255,0.45)', 'rgba(255,255,255,0.35)', 'rgba(41,112,255,0.25)'];
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -263,17 +265,41 @@ function LedgerPageContent() {
   );
   const searchParams = useSearchParams();
   const view = (searchParams?.get('view') ?? 'dashboard') as 'dashboard' | 'transactions' | 'cashflow' | 'overview';
-  const [overviewExportHandler, setOverviewExportHandler] = useState<(() => void) | null>(null);
-  const [cashflowExportHandler, setCashflowExportHandler] = useState<(() => void) | null>(null);
-  const [dashboardExportHandler, setDashboardExportHandler] = useState<(() => void) | null>(null);
-  const registerOverviewExportHandler = useCallback((handler: (() => void) | null) => {
+  const [overviewExportHandler, setOverviewExportHandler] = useState<(() => Promise<ExportPayload>) | null>(null);
+  const [cashflowExportHandler, setCashflowExportHandler] = useState<(() => Promise<ExportPayload>) | null>(null);
+  const [dashboardExportHandler, setDashboardExportHandler] = useState<(() => Promise<ExportPayload>) | null>(null);
+  const [overviewExportContext, setOverviewExportContext] = useState<ExportEmailContext | null>(null);
+  const [cashflowExportContext, setCashflowExportContext] = useState<ExportEmailContext | null>(null);
+  const [dashboardExportContext, setDashboardExportContext] = useState<ExportEmailContext | null>(null);
+  const [transactionsExportContext, setTransactionsExportContext] = useState<ExportEmailContext | null>(null);
+  const registerOverviewExportHandler = useCallback((handler: (() => Promise<ExportPayload>) | null) => {
     setOverviewExportHandler(() => handler);
   }, []);
-  const registerCashflowExportHandler = useCallback((handler: (() => void) | null) => {
+  const registerCashflowExportHandler = useCallback((handler: (() => Promise<ExportPayload>) | null) => {
     setCashflowExportHandler(() => handler);
   }, []);
-  const registerDashboardExportHandler = useCallback((handler: (() => void) | null) => {
+  const registerDashboardExportHandler = useCallback((handler: (() => Promise<ExportPayload>) | null) => {
     setDashboardExportHandler(() => handler);
+  }, []);
+
+  const getTransactionsExportPayload = useCallback(async (): Promise<ExportPayload> => {
+    const response = await fetch('/api/ledger/export-xlsx');
+    if (!response.ok) {
+      throw new Error('Failed to export transactions');
+    }
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('content-disposition') ?? '';
+    const match = contentDisposition.match(/filename="?([^\";]+)"?/i);
+    const fallbackName = `openfund-ledger-backup-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const filename = match?.[1] ?? fallbackName;
+    const mimeType =
+      response.headers.get('content-type') ??
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    return {
+      filename,
+      mimeType,
+      data: blob,
+    };
   }, []);
 
   useEffect(() => {
@@ -306,16 +332,16 @@ function LedgerPageContent() {
           title: 'Monthly Overview',
           subtitle: 'Review income and spending by category for any month or custom range.',
           actions: (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => overviewExportHandler?.()}
-                disabled={!overviewExportHandler}
-              >
-                <Download className="h-4 w-4" /> Export
-              </button>
-            </div>
+            <ExportActions
+              getExportPayload={overviewExportHandler ?? undefined}
+              context={
+                overviewExportContext ?? {
+                  view: 'monthly',
+                  accountLabel: 'All accounts',
+                  periodLabel: 'current period',
+                }
+              }
+            />
           ),
         };
       case 'transactions':
@@ -323,15 +349,15 @@ function LedgerPageContent() {
           title: 'Transactions',
           subtitle: 'Browse, filter, and export every line in your ledger.',
           actions: (
-            <div className="flex items-center gap-3">
-              <a
-                href="/api/ledger/export-xlsx"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#2970FF] bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1f5de0] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-                role="button"
-              >
-                <Download className="h-4 w-4" /> Export
-              </a>
-            </div>
+            <ExportActions
+              getExportPayload={getTransactionsExportPayload}
+              context={
+                transactionsExportContext ?? {
+                  view: 'transactions',
+                  description: 'the current selection',
+                }
+              }
+            />
           ),
         };
       case 'cashflow':
@@ -339,16 +365,15 @@ function LedgerPageContent() {
           title: 'Cash Flow',
           subtitle: 'Visualise net income trends across months to stay ahead.',
           actions: (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#2970FF] bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1f5de0] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={() => cashflowExportHandler?.()}
-                disabled={!cashflowExportHandler}
-              >
-                <Download className="h-4 w-4" /> Export
-              </button>
-            </div>
+            <ExportActions
+              getExportPayload={cashflowExportHandler ?? undefined}
+              context={
+                cashflowExportContext ?? {
+                  view: 'cashflow',
+                  periodLabel: 'recent period',
+                }
+              }
+            />
           ),
         };
       default:
@@ -356,28 +381,47 @@ function LedgerPageContent() {
           title: 'Performance Summary',
           subtitle: 'Visualize how your ledger is performing at a glance.',
           actions: (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => dashboardExportHandler?.()}
-                disabled={!dashboardExportHandler}
-              >
-                <Download className="h-4 w-4" /> Export
-              </button>
-            </div>
+            <ExportActions
+              getExportPayload={dashboardExportHandler ?? undefined}
+              context={
+                dashboardExportContext ?? {
+                  view: 'dashboard',
+                  periodLabel: 'current period',
+                }
+              }
+            />
           ),
         };
     }
-  }, [view, overviewExportHandler, cashflowExportHandler, dashboardExportHandler]);
+  }, [
+    view,
+    overviewExportHandler,
+    cashflowExportHandler,
+    dashboardExportHandler,
+    getTransactionsExportPayload,
+    overviewExportContext,
+    cashflowExportContext,
+    dashboardExportContext,
+    transactionsExportContext,
+  ]);
 
   const content = useMemo(() => {
     if (view === 'transactions') {
-      return <TransactionsView transactions={transactions} categoryTree={categoryTree} />;
+      return (
+        <TransactionsView
+          transactions={transactions}
+          categoryTree={categoryTree}
+          onExportContextChange={setTransactionsExportContext}
+        />
+      );
     }
     if (view === 'cashflow') {
       return (
-        <CashFlowView cashflow={dashboardCashFlow} onRegisterExportHandler={registerCashflowExportHandler} />
+        <CashFlowView
+          cashflow={dashboardCashFlow}
+          onRegisterExportHandler={registerCashflowExportHandler}
+          onExportContextChange={setCashflowExportContext}
+        />
       );
     }
     if (view === 'overview') {
@@ -386,6 +430,7 @@ function LedgerPageContent() {
           transactions={approvedTransactions}
           categoryTree={categoryTree}
           onRegisterExportHandler={registerOverviewExportHandler}
+          onExportContextChange={setOverviewExportContext}
         />
       );
     }
@@ -397,6 +442,7 @@ function LedgerPageContent() {
         cashflow={dashboardCashFlow}
         planned={dashboardPlanned}
         onRegisterExportHandler={registerDashboardExportHandler}
+        onExportContextChange={setDashboardExportContext}
       />
     );
   }, [
@@ -424,16 +470,17 @@ function DashboardView({
   cashflow,
   planned,
   onRegisterExportHandler,
+  onExportContextChange,
 }: {
   summary: SummaryValues;
   spendingBreakdown: BreakdownEntry[];
   comparison: LineDatum[];
   cashflow: CashFlowDatum[];
   planned: PlannedSummary[];
-  onRegisterExportHandler?: (handler: (() => void) | null) => void;
+  onRegisterExportHandler?: (handler: (() => Promise<ExportPayload>) | null) => void;
+  onExportContextChange?: (context: ExportEmailContext) => void;
 }) {
-  const exportHandler = useCallback(() => {
-    if (typeof window === 'undefined') return;
+  const exportHandler = useCallback(async (): Promise<ExportPayload> => {
     const html = buildDashboardExportHtml({
       breakdown: spendingBreakdown,
       comparison,
@@ -442,14 +489,11 @@ function DashboardView({
       summary,
     });
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `performance-summary-${new Date().toISOString().slice(0, 10)}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return {
+      filename: `performance-summary-${new Date().toISOString().slice(0, 10)}.html`,
+      mimeType: 'text/html;charset=utf-8',
+      data: blob,
+    };
   }, [spendingBreakdown, comparison, cashflow, planned, summary]);
 
   useEffect(() => {
@@ -457,6 +501,13 @@ function DashboardView({
     onRegisterExportHandler(exportHandler);
     return () => onRegisterExportHandler(null);
   }, [exportHandler, onRegisterExportHandler]);
+
+  useEffect(() => {
+    onExportContextChange?.({
+      view: 'dashboard',
+      periodLabel: 'the latest reporting period',
+    });
+  }, [onExportContextChange]);
 
   return (
     <div className="space-y-6">
@@ -494,10 +545,12 @@ function MonthlyOverviewView({
   transactions,
   categoryTree,
   onRegisterExportHandler,
+  onExportContextChange,
 }: {
   transactions: LedgerTransaction[];
   categoryTree: CategoryTree;
-  onRegisterExportHandler?: (handler: (() => void) | null) => void;
+  onRegisterExportHandler?: (handler: (() => Promise<ExportPayload>) | null) => void;
+  onExportContextChange?: (context: ExportEmailContext) => void;
 }) {
   const latestDate = useMemo(() => {
     let latest: number | null = null;
@@ -633,6 +686,13 @@ function MonthlyOverviewView({
 
   const showAccountBreakdown = accountFilter === 'all';
   const accountLabel = ACCOUNT_FILTER_CONFIG[accountFilter]?.label ?? ACCOUNT_FILTER_CONFIG.all.label;
+  useEffect(() => {
+    onExportContextChange?.({
+      view: 'monthly',
+      accountLabel,
+      periodLabel,
+    });
+  }, [onExportContextChange, accountLabel, periodLabel]);
 
   const accountBreakdown = useMemo(() => {
     const baseOrder: AccountFilterKey[] = ['yeshua', 'vila', 'savings'];
@@ -702,8 +762,7 @@ function MonthlyOverviewView({
 
   const showCategoryBreakdown = accountFilter !== 'all';
 
-  const handleExport = useCallback(() => {
-    if (typeof window === 'undefined') return;
+  const getExportPayload = useCallback(async (): Promise<ExportPayload> => {
     const identifier =
       mode === 'month'
         ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
@@ -721,16 +780,13 @@ function MonthlyOverviewView({
       aggregates,
     });
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
     const fileAccount = sanitizeForFilename(accountLabel) || 'ledger';
     const fileIdentifier = sanitizeForFilename(identifier) || 'period';
-    link.download = `monthly-overview-${fileAccount}-${fileIdentifier}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return {
+      filename: `monthly-overview-${fileAccount}-${fileIdentifier}.html`,
+      mimeType: 'text/html;charset=utf-8',
+      data: blob,
+    };
   }, [
     accountLabel,
     periodLabel,
@@ -748,9 +804,9 @@ function MonthlyOverviewView({
 
   useEffect(() => {
     if (!onRegisterExportHandler) return;
-    onRegisterExportHandler(handleExport);
+    onRegisterExportHandler(getExportPayload);
     return () => onRegisterExportHandler(null);
-  }, [handleExport, onRegisterExportHandler]);
+  }, [getExportPayload, onRegisterExportHandler]);
 
   return (
     <div className="space-y-6">
@@ -1108,7 +1164,15 @@ function MonthlyTotalsTable({
   );
 }
 
-function TransactionsView({ transactions, categoryTree }: { transactions: LedgerTransaction[]; categoryTree: CategoryTree }) {
+function TransactionsView({
+  transactions,
+  categoryTree,
+  onExportContextChange,
+}: {
+  transactions: LedgerTransaction[];
+  categoryTree: CategoryTree;
+  onExportContextChange?: (context: ExportEmailContext) => void;
+}) {
   const { assignCategory } = useLedger();
   const mainOptions = useMemo(() => [
     { id: 'all', name: 'All categories' },
@@ -1167,6 +1231,28 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
   const [editingCustomCategory, setEditingCustomCategory] = useState('');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [activeCategoryActionId, setActiveCategoryActionId] = useState<string | null>(null);
+  const accountLabelForTransactions =
+    ACCOUNT_FILTER_CONFIG[accountFilter]?.label ?? ACCOUNT_FILTER_CONFIG.all.label;
+
+  const transactionsPeriodDescription = useMemo(() => {
+    if (mode === 'month') {
+      const date = new Date(Date.UTC(selectedYear, selectedMonth - 1, 1));
+      return `${monthNameFormatter.format(date)} ${selectedYear}`;
+    }
+    const fromLabel = customFrom ? formatDisplayDate(customFrom) : 'start';
+    const toLabel = customTo ? formatDisplayDate(customTo) : 'end';
+    if (!customFrom && !customTo) {
+      return 'the current selection';
+    }
+    return `${fromLabel} – ${toLabel}`;
+  }, [mode, selectedMonth, selectedYear, customFrom, customTo]);
+
+  useEffect(() => {
+    onExportContextChange?.({
+      view: 'transactions',
+      description: `${accountLabelForTransactions} for ${transactionsPeriodDescription}`,
+    });
+  }, [onExportContextChange, accountLabelForTransactions, transactionsPeriodDescription]);
 
   const statusBadge = useMemo(() => {
     if (reconciliationStatus === 'balanced') {
@@ -1727,9 +1813,11 @@ function TransactionsView({ transactions, categoryTree }: { transactions: Ledger
 function CashFlowView({
   cashflow,
   onRegisterExportHandler,
+  onExportContextChange,
 }: {
   cashflow: CashFlowDatum[];
-  onRegisterExportHandler?: (handler: (() => void) | null) => void;
+  onRegisterExportHandler?: (handler: (() => Promise<ExportPayload>) | null) => void;
+  onExportContextChange?: (context: ExportEmailContext) => void;
 }) {
   const totals = useMemo(() => {
     return cashflow.reduce(
@@ -1752,30 +1840,33 @@ function CashFlowView({
     return `${cashflow[0].label} – ${cashflow[cashflow.length - 1].label}`;
   }, [cashflow]);
 
-  const handleExport = useCallback(() => {
-    if (typeof window === 'undefined') return;
+  useEffect(() => {
+    onExportContextChange?.({
+      view: 'cashflow',
+      periodLabel,
+    });
+  }, [onExportContextChange, periodLabel]);
+
+  const getExportPayload = useCallback(async (): Promise<ExportPayload> => {
     const html = buildCashFlowExportHtml({
       data: cashflow,
       totals,
       periodLabel,
     });
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
     const fileIdentifier = sanitizeForFilename(periodLabel) || 'cashflow';
-    link.download = `cashflow-${fileIdentifier}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return {
+      filename: `cashflow-${fileIdentifier}.html`,
+      mimeType: 'text/html;charset=utf-8',
+      data: blob,
+    };
   }, [cashflow, totals, periodLabel]);
 
   useEffect(() => {
     if (!onRegisterExportHandler) return;
-    onRegisterExportHandler(handleExport);
+    onRegisterExportHandler(getExportPayload);
     return () => onRegisterExportHandler(null);
-  }, [handleExport, onRegisterExportHandler]);
+  }, [getExportPayload, onRegisterExportHandler]);
 
   return (
     <div className="space-y-6">

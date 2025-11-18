@@ -170,14 +170,10 @@ export function RuleManager({ categoryOptions, draft, onDraftConsumed }: RuleMan
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-white/60">Categorization rules</h3>
-          <p className="text-xs text-white/40">Automate recurring vendors with prioritized patterns.</p>
-        </div>
+      <div className="flex justify-end">
         <button
           type="button"
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70 transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg"
           onClick={() => {
             refreshRules().catch(() => {});
             toast.success('Rules refreshed');
@@ -185,7 +181,7 @@ export function RuleManager({ categoryOptions, draft, onDraftConsumed }: RuleMan
         >
           Refresh
         </button>
-      </header>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-white/10 bg-[#061124] p-4">
         <div className="grid gap-3">
@@ -275,25 +271,25 @@ export function RuleManager({ categoryOptions, draft, onDraftConsumed }: RuleMan
             </label>
           </div>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex gap-2">
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={busy || !serverPipelineEnabled}
+            className="rounded-lg border border-[#2970FF]/60 bg-[#2970FF]/80 px-3 py-1.5 font-semibold text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#2970FF] hover:shadow-lg disabled:opacity-50"
+          >
+            {editingId ? (busy ? 'Updating…' : 'Update rule') : busy ? 'Creating…' : 'Create rule'}
+          </button>
+          {editingId ? (
             <button
-              type="submit"
-              disabled={busy || !serverPipelineEnabled}
-              className="rounded-lg border border-[#2970FF]/60 bg-[#2970FF]/80 px-3 py-1.5 font-semibold text-white transition hover:bg-[#2970FF] disabled:opacity-50"
+              type="button"
+              onClick={resetForm}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 font-semibold text-white/70 transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg"
             >
-              {editingId ? (busy ? 'Updating…' : 'Update rule') : busy ? 'Creating…' : 'Create rule'}
+              Cancel
             </button>
-            {editingId ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 font-semibold text-white/70 transition hover:bg-white/10"
-              >
-                Cancel
-              </button>
-            ) : null}
-          </div>
+          ) : null}
+        </div>
           <span className="text-[11px] text-white/40">Priority ↑ means rule runs first</span>
         </div>
       </form>

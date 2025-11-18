@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLedger } from '@/context/ledger-context';
+import { LEDGER_PRIMARY_BUTTON_CLASSES } from '@/helpers/export-utils';
 
 export function UploadCsvButton() {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -72,7 +73,7 @@ export function UploadCsvButton() {
     <>
       <button
         onClick={handleClick}
-        className="inline-flex items-center justify-center rounded-md border border-transparent bg-[#2970FF] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2970FF]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-70"
+        className={LEDGER_PRIMARY_BUTTON_CLASSES}
         disabled={busy}
       >
         {busy ? 'Importing…' : 'Import Statement'}

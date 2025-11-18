@@ -1,0 +1,136 @@
+# ============================
+# GLOBAL BEHAVIOR
+# ============================
+You must follow these rules for every code change, page creation, refactor, or UI update in this repository.
+
+Always use Next.js App Router, TypeScript, Tailwind CSS, and Shadcn UI components.
+
+Never invent custom CSS files.
+Never create global CSS except for Tailwind layers already included.
+Never output inline <style> blocks.
+Never output arbitrary class names unless they are valid Tailwind utility classes.
+
+All UI must follow the design system described below. No deviation.
+
+# ============================
+# DESIGN SYSTEM: LAYOUT
+# ============================
+All pages must follow this structural pattern:
+
+<main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+  <header className="space-y-1">
+    <h1 className="text-2xl font-semibold text-white">Page Title</h1>
+    <p className="text-white/60 text-sm">Optional subtitle.</p>
+  </header>
+
+  <section className="rounded-2xl border border-white/10 bg-[#060F1F]/60 p-6 shadow-inner shadow-black/30">
+    <!-- Content -->
+  </section>
+</main>
+
+Spacing scale must always use:
+- gap-4, gap-6, gap-8
+- p-4, p-6
+- py-4, py-6, py-10
+
+Never use margin/padding values outside this scale.
+
+# ============================
+# DESIGN SYSTEM: COMPONENTS
+# ============================
+Use ONLY the following UI primitives:
+
+- Shadcn: Button, Card, Input, Label, Select, Dialog, Sheet, Separator, DropdownMenu, Tabs
+- Tailwind utilities
+- Lucide icons
+
+NEVER use any other component library.
+NEVER generate custom icons.
+NEVER create new patterns not found in `/ui-reference`.
+
+# ============================
+# COLOR & STYLE RULES
+# ============================
+Use the dark theme colors that match the existing ledger UI:
+
+Background layers:
+- bg-[#050B18]
+- bg-[#060F1F]/60
+- bg-[#09142A]
+- bg-white/5
+- bg-white/10
+
+Borders:
+- border-white/5
+- border-white/10
+
+Text colors:
+- text-white
+- text-white/70
+- text-white/60
+- text-white/50
+
+Accent colors:
+- Primary: #2970FF
+- Secondary: #5B9CFF
+
+Never create new color tokens.
+Never use random Tailwind arbitrary colors.
+
+# ============================
+# CHARTS
+# ============================
+When generating charts:
+- Use Recharts ONLY.
+- Use the color tokens already defined in existing chart components.
+- Match the structure of SpendingBreakdownCard, SpendingComparisonChart, and CashFlowChart.
+
+You must NOT create new chart styles.
+
+# ============================
+# PAGE GENERATION RULES
+# ============================
+When creating a new page:
+1. Copy the page layout style from `/ui-reference/page-example.tsx`.
+2. Use Shadcn Cards for content blocks.
+3. Use uniform spacing and padding rules.
+4. Use existing typography (never invent new font sizes outside Tailwind defaults).
+
+# ============================
+# DOMAIN-SPECIFIC RULES
+# ============================
+When working inside the ledger code:
+- Follow existing function naming conventions.
+- Follow the existing type structures.
+- Do not modify helpers unless explicitly asked.
+- Do not change currency formatting logic.
+- Do not change date formatting utilities.
+
+# ============================
+# NAVIGATION & FEATURE RULES
+# ============================
+- Never invent new navigation items, routes, or pages. Only use nav items, labels, and hrefs that already exist in the current file or are explicitly requested in the prompt.
+- Never add sidebar items like Store, Team, Inbox, Upgrade, or similar unless they already exist in the codebase or are explicitly requested.
+- When refactoring shells or layouts, preserve the existing navigation semantics (same items, same routes, same active logic).
+- Do not introduce new feature sections (e.g. storage usage, upgrade banners, marketing cards) unless explicitly asked for.
+
+# ============================
+# RESTYLING VS PRODUCT CHANGES
+# ============================
+- When asked to "refactor", "restyle", or "upgrade" UI, only change layout, spacing, Tailwind classes, and visual hierarchy. Do NOT change business logic, routing, or domain behavior.
+- Do not change or invent labels, copy, or text content unless explicitly requested. Preserve the existing wording and meaning.
+- Do not add or remove interactive elements (buttons, inputs, filters, toggles) unless explicitly requested. Existing controls may be rearranged or visually upgraded, but not semantically altered.
+- Treat components in /ui-reference as style and structure references only. Do NOT copy their labels, dummy menu items, or fake features into production code.
+- When in doubt, prefer minimal visual changes that keep the current UX intact rather than introducing new patterns or elements.
+
+# ============================
+# STRICT MODE
+# ============================
+If ambiguous instructions appear, always choose the option that:
+- Follows the UI reference folder,
+- Uses Shadcn,
+- Uses Tailwind,
+- Stays minimal and consistent,
+- Matches the existing dark-SaaS aesthetic.
+
+Never generate creative layout variants unless explicitly instructed.

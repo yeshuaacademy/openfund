@@ -396,7 +396,7 @@ export function ReviewTable({
               <div className="flex flex-col justify-end gap-2 sm:flex-row lg:flex-col">
                 <button
                   className={cn(
-                    'w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70',
+                    'w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-emerald-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70',
                     'sm:w-36 lg:w-full',
                   )}
                   onClick={() => handleAssign(tx.id)}
@@ -407,7 +407,7 @@ export function ReviewTable({
                 {onCreateRule ? (
                   <button
                     type="button"
-                    className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60 sm:w-36 lg:w-full"
+                    className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 sm:w-36 lg:w-full"
                     onClick={() => onCreateRule(tx)}
                     disabled={disabled}
                   >

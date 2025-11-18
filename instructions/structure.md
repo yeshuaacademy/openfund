@@ -1,4 +1,4 @@
-# MicroSaaS Fast Boilerplate - Cursor AI Instructions
+# ProChat MicroSaaS Fast Boilerplate - Cursor AI Instructions
 
 ## Overview
 
@@ -70,7 +70,7 @@ Create a `.env.local` file in the root directory with the following variables:
 ### Database
 
 ```
-DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
+DATABASE_URL="postgresql://username:password@localhost:5433/database_name"
 ```
 
 - **Source**: PostgreSQL database connection string
@@ -296,3 +296,180 @@ npm run migrate-db # Run database migrations
 - **Middleware**: Authentication middleware for protected routes
 - **Type Safety**: Full TypeScript implementation with strict typing
 - **Component Library**: Modular component architecture with Radix UI primitives
+
+---
+
+## 🚨 Mandatory Database Provisioning (Required for All Apps)
+
+Every project built with the **ProChat MicroSaaS Fast Boilerplate** must provision a PostgreSQL database before the application can run locally or in production.
+
+The boilerplate depends on PostgreSQL for:
+- Clerk authentication session/map storage
+- Stripe subscription state
+- Multi‑tenant project schemas
+- Prisma system schema
+- Dashboard access checks
+
+Because of this, **Codex must ALWAYS provision the database** when initializing a new app.
+
+### ✔ Required Script
+
+Codex must run:
+
+```
+./scripts/provision-saas.sh <project-slug>
+```
+
+This script automatically:
+- Creates the tenant schema (`tenant_<slug>`)
+- Creates the Postgres user (`tenant_<slug>_user`)
+- Grants privileges
+- Writes the correct `DATABASE_URL` to `.env` and `.env.production`
+- Syncs system schema via Prisma migrations
+- Registers the environment with the MCP Bridge (for production DB access)
+
+### ✔ Codex Automation Rules
+
+Codex 5.1 must:
+
+- **Always** execute the provisioning script for new projects.
+- **Never** skip database provisioning.
+- **Never** substitute SQLite, in‑memory, or alternative databases.
+- **Never** invent its own connection strings.
+- **Never** alter the Postgres provider or protocol.
+- **Never** modify `systemPrisma.ts`, `prismaTenant.ts`, or tenant‑routing logic unless explicitly instructed.
+
+For deeper details, Codex must reference:
+
+```
+/instructions/database-provisioning.md
+```
+
+## Codex 5.1 Operational Rules
+
+The following rules ensure consistent, safe, low‑token, and non‑destructive behavior for Codex agents working within the ProChat MicroSaaS Fast Boilerplate. These rules apply to all future apps built using this boilerplate.
+
+### 1. Architectural Safety
+- Do not create new root‑level folders unless explicitly instructed.
+- Do not modify or rename existing folders defined in the Appendix folder tree.
+- Do not reorganize or refactor the boilerplate architecture.
+- Always reference the folder tree before proposing edits.
+
+### 2. Minimal Diff Discipline
+- Only modify the files required to complete the explicit task.
+- Avoid large rewrites; prefer surgical line‑level edits.
+- Never regenerate full files unless the user explicitly commands it.
+
+### 3. Reuse Over Recreation
+- Always reuse existing libraries inside `/src/libs`, `/src/utils`, `/src/components`, etc.
+- Never create a duplicate of an existing module (e.g., do not create “wpClient.ts” if “wp.ts” exists).
+- Extend existing functionality rather than replacing it.
+
+### 4. Protected Areas — Do Not Modify
+Codex must not modify the following unless the user explicitly instructs otherwise:
+- Authentication (Clerk)
+- Billing (Stripe)
+- Email (Resend)
+- Database core files (`prisma/`, Prisma client helpers)
+- Automation integrations (`/src/app/api/(make)` and `(n8n)`)
+- SEO & blog engine
+- Global components and layout
+- The entire instructions folder (except when explicitly asked)
+
+### 5. Dependency Safety
+- Do not install new dependencies.
+- Do not upgrade existing dependencies.
+- Do not remove dependencies.
+- Do not introduce new frameworks or architectural patterns.
+
+### 6. Token Efficiency
+- Avoid unnecessary explanations inside code changes.
+- Minimize context usage by focusing strictly on the task.
+- Use compact diffs and avoid rewriting JSON, schemas, or configs entirely.
+
+### 7. Multi‑tenant Awareness
+- Respect existing tenant utilities like `getTenantFromRequest.ts` and `prismaTenant.ts`.
+- Do not modify multi‑tenant logic unless explicitly told to.
+
+### 8. UI & Routing Rules
+- All new dashboard features belong under `/src/app/dashboard`.
+- All new public features belong under `/src/app`.
+- All new API endpoints belong under `/src/app/api`.
+- All styling must follow Tailwind + shadcn UI conventions already established.
+
+### 9. Confirm When Unsure
+- If the task cannot be performed safely under these constraints, Codex must ask the user for clarification instead of guessing.
+
+---
+
+## Feature Placement Guide (App‑Agnostic)
+
+This boilerplate supports rapid shipping of microSaaS applications. The following placement guide defines where Codex should place new features for any future app.
+
+### Frontend Pages
+- Public pages: `/src/app/...`
+- Auth pages: `/src/app/sign-in`, `/src/app/sign-up`
+- Protected dashboard pages: `/src/app/dashboard/...`
+
+### API Endpoints
+- `/src/app/api/...` — All new backend logic.
+- Group related endpoints under a folder (e.g., `/api/myfeature/...`).
+
+### Reusable Logic
+- Place helpers in `/src/libs`.
+- Place utilities in `/src/utils`.
+- Place UI components in `/src/components`.
+
+### Backend Integrations
+- Extend `/src/libs/wp.ts`, `/src/libs/prisma.ts`, `/src/libs/resend.ts`, etc.
+- Never create parallel versions of existing libs.
+
+### Database
+- Modify `prisma/schema.prisma` only when instructed.
+
+---
+
+## “Do Not Touch” Rules (App‑Independent)
+
+Codex must avoid modifying these areas unless the user gives explicit permission:
+
+### Authentication
+- `/src/libs/safeClerk.tsx`
+- `/src/libs/safeClerkServer.ts`
+- `/src/app/sign-in`
+- `/src/app/sign-up`
+
+### Billing
+- `/src/app/api/stripe/*`
+- Product definitions in `src/config.ts`
+
+### Automation Systems
+- `/src/app/api/(make)`
+- `/src/app/api/(n8n)`
+
+### Global Components & SEO
+- `/src/components/*`
+- `/src/libs/seo.tsx`
+- Blog system under `/src/app/blog`
+
+### System‑Level Files
+- `next.config.js`
+- `tailwind.config.ts`
+- `tsconfig.json`
+- Deployment & Docker files unless asked
+
+---
+
+## Codex Behavior Guidelines
+
+### For All Future Apps:
+- Fit new features into the existing boilerplate.
+- Maintain compatibility with Clerk, Stripe, and Prisma.
+- Respect the minimal surface area principle.
+- Prioritize rapid MVP delivery (48‑hour target).
+- Keep app logic isolated from boilerplate core.
+- Use small, isolated commits.
+
+---
+
+This completes the universal enhancement of `structure.md` while keeping it boilerplate‑agnostic and aligned with the ProChat MicroSaaS Fast Boilerplate architecture.

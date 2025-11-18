@@ -1,4 +1,6 @@
-# Stripe Integration Guide - MicroSaaS Fast Boilerplate
+# ProChat MicroSaaS Fast Boilerplate — Stripe Integration Guide
+
+These guidelines are app‑agnostic and apply to any microSaaS product built on the ProChat MicroSaaS Fast Boilerplate. This document defines how Stripe must be integrated, protected, and extended in a safe and predictable way for all future apps.
 
 ## Stripe Version and Setup
 
@@ -221,7 +223,7 @@ const handlePurchase = async (priceId: string) => {
 
 // Update the button to call the function
 ;<button onClick={() => handlePurchase('price_1234567890')} disabled={loading}>
-	Get OpenFund
+	Get MicroSaaSFast
 </button>
 ```
 
@@ -360,3 +362,71 @@ stripe: {
 5. **Validate all input data** before processing
 6. **Use HTTPS** in production
 7. **Monitor webhook failures** and implement retry logic
+
+---
+
+## Codex 5.1 Integration Rules for Stripe (App-Agnostic)
+
+These rules ensure that Codex 5.1 interacts safely with the Stripe billing system inside the ProChat MicroSaaS Fast Boilerplate. Codex MUST follow these rules for all future apps.
+
+### 1. Do Not Modify Core Billing Architecture
+Codex must NOT:
+- rewrite or refactor any files under `src/app/api/stripe/*`
+- modify `src/app/api/webhook/stripe/route.ts`
+- alter checkout session creation logic
+- change webhook validation
+- rewrite billing-related helpers in `/src/helpers/checkout.ts`
+- modify Stripe-related environment variable names
+
+### 2. Minimal-Diff Billing Changes Only
+Codex must:
+- edit only the specific billing file requested
+- avoid regenerating full webhook handlers
+- avoid modifying database schema unless explicitly instructed
+- keep all updates small, isolated, and reversible
+
+### 3. Reuse Existing Billing Utilities
+Codex MUST reuse:
+- `handleCheckoutProcess()` from `/src/helpers/checkout.ts`
+- the existing `stripe` instance in `/src/app/api/stripe/...`
+- product configuration defined in `src/config.ts`
+
+Codex must NOT create:
+- new checkout helpers
+- new Stripe clients
+- new billing directories
+
+### 4. Product & Price Management Rules
+Codex must:
+- treat `src/config.ts` as the single source of truth for Stripe price IDs
+- never modify product structure unless instructed
+- never introduce new price IDs without approval
+
+### 5. Protected Areas — Do Not Touch
+Codex must not modify:
+- the Subscription model in Prisma unless instructed
+- webhook database update logic
+- email notifications tied to checkout or subscription events
+- Stripe mode switching logic (test vs live)
+
+### 6. No New Dependencies
+Codex must NOT:
+- install new Stripe libraries
+- upgrade Stripe SDK versions
+- introduce alternative billing systems
+
+### 7. Multi-Tenant Awareness
+When interacting with billing:
+- tenant data must never be mixed
+- `user_clerk_id` is always the primary identity key
+- subscription updates must target only the authenticated tenant
+
+### 8. Token-Efficient Behavior
+Codex must:
+- avoid unnecessary reprints of Stripe object schemas
+- avoid regenerating full checkout or webhook files
+- produce small diffs and avoid verbose code blocks
+
+### 9. Clarify When Unsure
+If a requested change risks breaking billing or subscription lifecycle,  
+Codex must ask the user for clarification before proceeding.

@@ -1,4 +1,6 @@
-# Troubleshooting Guide - MicroSaaS Fast Boilerplate
+# ProChat MicroSaaS Fast Boilerplate — Troubleshooting Guide
+
+This guide is app-agnostic and applies to all microSaaS applications built using the ProChat MicroSaaS Fast Boilerplate. It provides universal debugging strategies, safe Codex behaviors, and guardrails to ensure that troubleshooting remains consistent, predictable, and non-destructive across future applications.
 
 ## When AI Can't Help: Self-Service Troubleshooting
 
@@ -465,3 +467,81 @@ stripe trigger checkout.session.completed
 ```
 
 Remember: Most problems have been solved before. Take time to search thoroughly and understand the root cause before implementing solutions.
+
+---
+
+## Codex 5.1 Troubleshooting Rules (App-Agnostic)
+
+These rules define how Codex 5.1 must behave when investigating, troubleshooting, or modifying code in response to errors.
+
+### 1. Minimal-Diff Debugging
+Codex must:
+- propose the smallest possible change required to fix the issue
+- avoid rewriting entire files
+- avoid making structural or architectural changes during debugging
+- avoid moving or renaming files
+
+### 2. No Assumptions — Verify All Context
+Codex must:
+- refer to the Appendix folder tree when locating files
+- examine only the files the user provides
+- avoid creating new libraries or utilities unless requested
+- ask for missing context instead of guessing
+
+### 3. Protected Systems — Do Not Modify
+Codex must NOT modify unless explicitly instructed:
+- Clerk authentication components
+- Stripe billing logic
+- n8n or Make automations
+- Prisma core logic or schema
+- SEO or Blog engine components
+- Global layout, theme, and UI providers
+
+### 4. Token-Efficient Troubleshooting
+Codex must:
+- avoid restating large sections of unchanged code
+- avoid regenerating schemas or config files
+- avoid unnecessary explanations beyond what is required to resolve the issue
+
+### 5. Error-First Reasoning
+Codex must:
+- always request the exact error message if not provided
+- request the relevant file(s) before proposing a fix
+- propose a hypothesis based on the error
+- confirm with the user before applying significant changes
+
+### 6. Preserve Boilerplate Integrity
+Codex must:
+- respect the architecture of the ProChat MicroSaaS Fast Boilerplate
+- avoid introducing breaking changes to routing, auth, billing, or middleware
+- avoid upgrading dependencies during debugging
+
+### 7. Ask Before Acting
+If a debugging step requires:
+- schema changes
+- refactoring
+- dependency updates
+- modifications to protected files
+
+Codex must ask the user for confirmation before proceeding.
+
+### 8. Avoid Quick-Fix Anti-patterns
+Codex must NOT:
+- suppress errors by removing code
+- wrap unclear functions in try/catch blocks without explanation
+- use `any` as a type workaround without justification
+- comment out large blocks unless explicitly instructed
+
+### 9. Align With Boilerplate Philosophy
+Codex must:
+- maintain simplicity
+- preserve speed of shipping
+- avoid unnecessary abstraction
+- follow existing patterns rather than invent new ones
+
+### 10. When in Doubt — Request Clarification
+Codex must always pause and ask the user before making changes that could:
+- cause regressions
+- touch multiple subsystems
+- impact multi-tenant behavior
+- impact billing or auth

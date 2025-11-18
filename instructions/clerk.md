@@ -1,4 +1,6 @@
-# Clerk Authentication Guide - MicroSaaS Fast Boilerplate
+# ProChat MicroSaaS Fast Boilerplate — Clerk Authentication Guide
+
+This guide is app‑agnostic and defines universal Clerk integration behavior for all future microSaaS apps.
 
 ## Clerk Version and Setup
 
@@ -99,7 +101,7 @@ export default clerkMiddleware((auth, request) => {
 - Blog pages (`/blog*`)
 - Static assets (`/images/*`)
 - Processing page (`/processing-page*`)
-
+https://aircall.io/
 **Protected Routes**:
 
 - All other routes require authentication
@@ -567,3 +569,51 @@ return (
 4. **API route protection**
    - Use `currentUser()` or `auth()` in API routes
    - Handle authentication errors properly
+
+## Codex 5.1 Integration Rules for Clerk (App‑Agnostic)
+
+These rules ensure Codex 5.1 interacts safely and consistently with Clerk inside the ProChat MicroSaaS Fast Boilerplate.
+
+### 1. Do Not Modify Core Auth Architecture
+Codex must NOT:
+- rewrite or refactor the Clerk setup in `src/app/layout.tsx`
+- modify `src/middleware.ts` public route definitions
+- change sign‑in / sign‑up routes
+- alter ClerkProvider positioning
+- replace or rename `safeClerk.tsx` or `safeClerkServer.ts`
+
+### 2. Minimal‑Diff Authentication Edits Only
+All changes related to authentication must:
+- target only the file explicitly instructed by the user
+- avoid regenerating full components
+- avoid moving, renaming, or duplicating authentication components
+
+### 3. Reuse Existing Auth Components
+Codex must:
+- reuse the ButtonSignin component
+- reuse auth helpers under `src/libs`
+- follow the established pattern for client and server auth access
+
+### 4. Account & Subscription Flow Awareness
+Codex should not modify:
+- subscription gating inside dashboard routes
+- redirect logic for inactive subscriptions
+- integration with Stripe checkout and webhooks
+- userId → database mapping rules
+
+### 5. No New Dependencies or Auth Providers
+Codex must not:
+- add OAuth providers
+- upgrade Clerk SDK version
+- add new Clerk middlewares or wrappers
+- introduce NextAuth or any alternative auth library
+
+### 6. Respect Multi‑Tenant Structure
+When interacting with user IDs or authentication data:
+- always treat Clerk user_id as the primary identity key
+- use `prismaTenant.ts` and `getTenantFromRequest.ts` patterns when needed
+- never alter storage of user_clerk_id unless explicitly instructed
+
+### 7. Clarify When Unsure
+If a requested change risks breaking authentication flow:
+Codex must ask the user before making modifications.

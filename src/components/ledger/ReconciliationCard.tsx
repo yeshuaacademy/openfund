@@ -342,7 +342,7 @@ export function ReconciliationCard({ className, onStatusChange }: { className?: 
               type="button"
               onClick={handleSaveOpening}
               disabled={savingOpening}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-[#2970FF]/80 px-3 py-1.5 font-semibold text-white transition hover:bg-[#2970FF] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-[#2970FF]/80 px-3 py-1.5 font-semibold text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#2970FF] hover:shadow-lg disabled:opacity-50"
             >
               {savingOpening ? 'Saving…' : 'Save opening balance'}
             </button>
@@ -350,7 +350,7 @@ export function ReconciliationCard({ className, onStatusChange }: { className?: 
               type="button"
               onClick={handleLockOpening}
               disabled={lockBusy || !selectedAccountSummary?.openingBalance}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 font-semibold text-white/80 transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-lg disabled:opacity-40"
             >
               Lock opening
             </button>
@@ -372,7 +372,7 @@ export function ReconciliationCard({ className, onStatusChange }: { className?: 
               type="button"
               onClick={handleLedgerLock}
               disabled={lockBusy || !data?.ledger.id || Boolean(data?.ledger.lockedAt)}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-emerald-500/80 px-3 py-1.5 font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-emerald-500/80 px-3 py-1.5 font-semibold text-white transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-emerald-500 hover:shadow-lg disabled:opacity-50"
             >
               Lock period
             </button>
@@ -380,7 +380,7 @@ export function ReconciliationCard({ className, onStatusChange }: { className?: 
               type="button"
               onClick={handleLedgerUnlock}
               disabled={lockBusy || !data?.ledger.id || !data?.ledger.lockedAt}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-red-500/10 px-3 py-1.5 font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-red-500/10 px-3 py-1.5 font-semibold text-red-200 transform transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-red-500/20 hover:shadow-lg disabled:opacity-40"
             >
               Unlock period
             </button>

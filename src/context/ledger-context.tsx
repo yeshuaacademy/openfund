@@ -10,6 +10,7 @@ import {
   updateCategorizationRule,
   deleteCategorizationRule,
   clearReviewQueue as clearReviewQueueRequest,
+  updateCategory,
 } from '@/libs/api';
 
 type AccountLabelEntry = {
@@ -1234,6 +1235,15 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
       transactionId: UUID,
       { categoryId, mainCategoryId, categoryName }: { categoryId?: UUID | null; mainCategoryId?: UUID | null; categoryName?: string },
     ) => {
+      if (USE_SERVER_PIPELINE) {
+        await updateCategory(transactionId, {
+          categoryId: categoryId ?? null,
+          categoryName,
+        });
+        await refreshFromServer();
+        return;
+      }
+
       setState((current) => {
         const tx = current.transactions.find((item) => item.id === transactionId);
         if (!tx) {
@@ -1337,7 +1347,7 @@ export const LedgerProvider = ({ children }: { children: ReactNode }) => {
         };
       });
     },
-    [],
+    [refreshFromServer],
   );
 
   const clearReviewQueue = useCallback(async () => {

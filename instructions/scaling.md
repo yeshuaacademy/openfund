@@ -1,4 +1,6 @@
-# Scaling Guide - MicroSaaS Fast Boilerplate
+# ProChat MicroSaaS Fast Boilerplate — Scaling Guide
+
+These guidelines apply universally to any app built using the ProChat MicroSaaS Fast Boilerplate. They define safe scaling behaviors, architectural constraints, and Codex 5.1 rules that ensure consistent, predictable development without breaking core systems.
 
 ## Overview
 
@@ -1102,6 +1104,7 @@ npm run build && npm start
 
 This boilerplate provides a solid foundation for scaling your microSaaS. The existing functionality covers the most common requirements, while the extensible architecture allows for easy addition of new features. Focus on understanding the existing patterns and follow them when adding new functionality.
 
+
 Remember to:
 
 - Start small and iterate
@@ -1109,3 +1112,86 @@ Remember to:
 - Monitor performance and user feedback
 - Document new features and APIs
 - Keep security in mind at every step
+
+---
+
+## Codex 5.1 Scaling & Architecture Rules (App-Agnostic)
+
+These rules ensure Codex 5.1 performs scaling-related tasks safely and consistently across all future microSaaS apps built on the ProChat MicroSaaS Fast Boilerplate.
+
+### 1. Do Not Modify Core Boilerplate Architecture
+Codex must NOT:
+- restructure folders or move modules
+- rewrite the app router layout
+- refactor Clerk, Stripe, n8n, Prisma, or SEO systems
+- remove or rename existing utilities in `/src/libs`, `/src/utils`, or `/src/components`
+
+The architecture defined in the Appendix is authoritative.
+
+### 2. Minimal-Diff Scaling Changes Only
+- When adding new features, Codex should create the smallest possible change.
+- Avoid rewriting existing implementations.
+- Never rewrite multiple files unless explicitly instructed.
+- All changes must remain backward compatible unless told otherwise.
+
+### 3. Reuse Existing Systems
+Codex must always reuse:
+- multi-tenant helpers (`getTenantFromRequest.ts`, `prismaTenant.ts`)
+- database clients (`prisma.ts`)
+- Stripe helpers (`checkout.ts`)
+- Email templates & Resend client
+- Blog and SEO infrastructure
+- UI components and theme system
+
+Never duplicate functionality already available.
+
+### 4. Safe Database Scaling
+Codex must NOT:
+- modify existing Prisma models unless instructed
+- rename fields
+- remove relations
+- migrate the database automatically
+
+Allowed only when directed:
+- adding new optional fields
+- adding new tables
+- adding new indexes
+
+### 5. Safe API Scaling
+When adding new API endpoints:
+- follow the existing pattern in `/src/app/api/...`
+- ensure authentication with Clerk when needed
+- maintain consistent error formatting
+- avoid adding middleware without approval
+
+Codex must not create overlapping routes.
+
+### 6. Performance Scaling Rules
+Codex should:
+- prefer query optimization over schema rewrites
+- avoid adding new caching layers unless asked
+- avoid introducing Redis, queues, workers without explicit permission
+- suggest optimizations using existing tools first
+
+### 7. UI & Component Scaling
+Codex must:
+- use Tailwind + shadcn UI components
+- follow established component patterns
+- avoid rewriting global styles or theme provider
+- maintain design system consistency
+
+### 8. Automation Scaling Rules
+Codex must:
+- never modify existing n8n or Make integrations
+- extend them only when explicitly asked
+- avoid creating new automation platforms
+
+### 9. Multi-Tenancy Scaling Rules
+Codex must:
+- always consider tenant separation
+- never mix data between tenants
+- always use Clerk user ID or tenant ID for queries
+
+### 10. When Unsure — Ask
+If a scaling-related change could break existing architecture:
+Codex must pause and request clarification before making edits.

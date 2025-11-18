@@ -1,121 +1,201 @@
-![CI Pipeline](https://github.com/prochattools/boilerplate-main/actions/workflows/docker.yml/badge.svg)
+# ProChat MicroSaaS Fast Boilerplate — Universal README
 
-# Stevie's Studio — Typescript
+This repository is the official **ProChat MicroSaaS Fast Boilerplate**, designed to let developers build, deploy, and iterate microSaaS products in under 48 hours.  
+It integrates Clerk, Stripe, Prisma, Supabase, n8n/Make, SEO tooling, a full dashboard, multi-tenant architecture, and Codex automation — all preconfigured and production-ready.
 
-Hey Indie Hacker 👋 it's Steve from [Stevie's Studio](https://docs.microsaasfast.me/). Let's build your SaaS fast and NOW!
+This README provides the higher‑level architecture overview, while the `/instructions` folder defines strict Codex 5.1 rules for how AI tooling should update and extend this boilerplate safely, without hallucinations or architectural drift.
 
-<sub>**Watch/Star the repo to be notified when updates are pushed**</sub>
+Below this introduction, the original database automation documentation remains unchanged, because database automation is a first‑class feature of this boilerplate.
 
-## Get Started
+## 🚨 Required Step: Database Provisioning (Mandatory for All Projects)
 
-1. Follow the [Get Started Tutorial](https://docs.microsaasfast.me/) to clone the repo and run your local server 💻
+Every project built with the **ProChat MicroSaaS Fast Boilerplate** must provision a tenant database before running locally or deploying to production.
 
-2. Follow the [Run your SaaS In 5 Minutes Tutorial](https://docs.microsaasfast.me/microsaas-in-5-minutes/) to learn the boilerplate and launch your micro SaaS today!
+This boilerplate **cannot function without a valid PostgreSQL database**, because Clerk authentication, Stripe subscription gating, the dashboard, and Prisma’s multi‑tenant routing all depend on it.
 
-# 🚀 How to Start a New SaaS Project from Boilerplate
+### ✔ How to provision the database (Local or Production)
 
-1. **Create new repo from template**
-   - Go to https://github.com/prochattools/boilerplate-saas
-   - Click "Use this template" → "Create a new repository"
-   - Name your new repo after your SaaS project
-2. **Clone your new repo**
+Run the provisioning script:
+
+```
+./scripts/provision-saas.sh <project-slug>
+```
+
+This command:
+
+- Creates the tenant schema: `tenant_<slug>`
+- Creates the database user: `tenant_<slug>_user`
+- Grants required permissions
+- Writes the correct `DATABASE_URL` and `SYSTEM_DATABASE_URL` into:
+  - `.env` (development)
+  - `.env.production` (deployment)
+- Syncs Prisma system schema using:
+  ```
+  npx prisma migrate deploy --schema=prisma/system.prisma
+  ```
+
+### ✔ Codex Behavior
+
+Codex 5.1 must **always** run the provisioning script when initializing a new project based on this boilerplate.
+
+Codex must never:
+- skip database provisioning,
+- generate placeholder or invalid DATABASE_URL values,
+- switch the database provider,
+- use SQLite or in‑memory databases,
+- modify Postgres connection structure.
+
+For a complete walkthrough, see:
+
+```
+/instructions/database-provisioning.md
+```
+
+## How Codex 5.1 Should Use This Boilerplate
+
+Codex must follow the rules defined in `/instructions` to ensure:
+- minimal diffs,
+- no hallucinated files,
+- no duplication of existing libs,
+- no modification of protected systems (Clerk, Stripe, Prisma, SEO, automation),
+- consistent architecture aligned with the folder tree in the Appendix.
+
+Codex should treat this boilerplate as **app‑agnostic**:  
+every new microSaaS built on top of it should reuse the same routing, dashboard, libs, and multi‑tenant structure unless explicitly changed by the user.
+
+### ⚙️ Codex Database Automation
+
+This boilerplate integrates **OpenAI Codex** to automate database provisioning, migrations, and environment management for both local development and production environments.
+
+#### 🧠 Architecture Overview
+
+- There is a single shared Postgres database named `postgres` used in both development and production.
+- Each SaaS app gets its own dedicated schema within this shared database (e.g., `tenant_<slug>`).
+- Codex automates provisioning by creating new schemas, users, running migrations, and registering tenants centrally.
+- In production, Codex connects **through the MCP bridge** to Supabase for provisioning because Supabase is private.
+- The SaaS app itself connects **directly** to Supabase in production, not through the MCP bridge.
+
+| Environment | Connection Method                  | Target Database                  | Environment File       |
+|-------------|----------------------------------|---------------------------------|-----------------------|
+| Development | Direct Postgres connection (Docker Desktop on port 5433) | Local Postgres instance          | `.env`                |
+| Production  | MCP bridge HTTP API proxy (inside Dokploy) for provisioning | Supabase Postgres (`10.0.2.4:5433`) | `.env.production`     |
+
+#### 🧩 Automation Details
+
+Codex automates the following steps seamlessly in both environments, using the appropriate connection strategy:
+
+- Creates a dedicated schema for each tenant or project (e.g., `tenant_<slug>`).
+- Creates a corresponding database user with appropriate permissions (e.g., `tenant_<slug>_user`).
+- Runs `npx prisma migrate deploy --schema=prisma/system.prisma` during provisioning for each new SaaS project to apply all Prisma migrations.
+- Registers the tenant in a central registry table (e.g., `public.tenants`) to enable multi-tenant support.
+
+#### 🧱 Prerequisites
+
+- **Docker Desktop** must be running during development to provide the local Postgres instance on port `5433`.
+- You have an `.env` file for local development and an `.env.production` file for production deployments, each including the appropriate connection strings, for example:
+
+  ```bash
+  # .env (development)
+  DATABASE_URL=postgresql://tenant_demo_user:***@localhost:5433/postgres?schema=tenant_demo
+  SYSTEM_DATABASE_URL=postgresql://postgres:devpass@localhost:5433/postgres?schema=public
+
+  # .env.production (production)
+  DATABASE_URL=postgresql://tenant_demo_user:***@10.0.2.4:5433/postgres?schema=tenant_demo
+  SYSTEM_DATABASE_URL=postgresql://postgres:prodpass@10.0.2.4:5433/postgres?schema=public
+  ```
+
+#### ⚙️ Starting a New Project
+
+1. **Bootstrap the app**
+
    ```bash
-   git clone https://github.com/prochattools/YOUR-SaaS.git
-   cd YOUR-SaaS
+   git clone https://github.com/prochattools/boilerplate-saas.git my-new-app
+   cd my-new-app
    ```
-3. **Set up environment**
-   - Provision a new Supabase project
-   - Copy the Supabase connection string into `.env` as `DATABASE_URL`
-   - Add `NEXTAUTH_SECRET`, `RESEND_API_KEY`, and other secrets
-   - Prepare Cloudflare Tunnel and Dokploy app:
-     - In Cloudflare, add DNS entry pointing to your Dokploy tunnel
-     - In Dokploy, create a new app pointing to this repo’s main branch and enable PR previews
-     - Paste your secrets into Dokploy’s Environment Variables panel
-4. **First deployment**
-   - Push to `main` which triggers automatic deploy via Dokploy GitHub App
-   - After deploy finishes, run in Dokploy “Run Command”:
-     ```bash
-     npx prisma migrate deploy && npm run start
-     ```
-   - Verify `/api/health` endpoint returns `ok`
-5. **Preview deployments (PRs)**
-   - Create a branch, push it, and open a PR
-   - Dokploy will provision a preview environment automatically
-   - Each PR should use its own ephemeral Supabase database (create manually until automated)
-6. **Start coding your SaaS**
-   - Extend models in `prisma/schema.prisma`, run migrations, and deploy
-   - Use built-in Next.js, Prisma, Supabase, auth, email, and CI/CD
-7. **Optional housekeeping**
-   - Run `npm audit fix` regularly
-   - Update project name in `package.json`, `README.md`, and environment variables
 
-## Links
+2. **Initialize the tenant database**
 
-- [📚 Documentation](https://docs.microsaasfast.me/)
-- [🧑‍💻 Discord](https://discord.gg/U75p2BQuAH)
-- [🧑‍💻 Free clients guide](https://www.notion.so/Product-Hunt-Launch-36a5b9610bf04559b8fcf4a2a7b90ea6?pvs=4)
+   Run Codex with instructions to set up the database:
 
-## Support
+   ```bash
+   codex "initialize database for project <slug> using instructions from codex-db-automation.md"
+   ```
 
-Reach out to me on [Twitter](https://twitter.com/iamstv) or made@stevie.studio
+   This command works seamlessly in both development and production environments by using the correct connection method based on your environment:
 
-## Development Workflow
+   - In development, Codex connects directly to the local Postgres instance via Docker.
+   - In production, Codex connects through the MCP bridge HTTP API proxy to your Supabase database for provisioning.
 
-**Important**: This boilerplate uses a Git + Dokploy workflow for safe deployments. See [docs/git-workflow.md](./docs/git-workflow.md) for complete details.
+   Codex will:
 
-**Key Rules:**
-- Never push directly to `main`
-- Always create feature branches
-- Test preview deployments before merging
-- Merge to `main` only when ready for production
+   - Create the schema `tenant_<slug>`
+   - Create the user `tenant_<slug>_user`
+   - Run `npx prisma migrate deploy --schema=prisma/system.prisma` to apply all Prisma migrations
+   - Register the tenant in the `public.tenants` table
 
-## Deployment Pipeline
+3. **Run the app**
 
-- **Main branch deployments** – Handled via the Dokploy GitHub App. Builds run on the Dokploy server using Nixpacks, consuming server resources.
-- **Preview deployments (feature branches / PRs)** – Also triggered by the Dokploy GitHub App with builds executed on the Dokploy server.
-- **Container images pipeline** – Managed by `.github/workflows/docker.yml` in GitHub Actions, which builds and pushes images to GHCR. These images are not yet used for live deployments but are ready for future image-based previews.
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-> **Note:** Dokploy deployments currently build on the server, so they consume local resources. The GitHub container image pipeline is kept so we can switch quickly when Dokploy supports image-based previews.
+4. **Access locally**
 
-### Future Migration: Switching to Container Images
-1. Enable container-image based deployments in Dokploy (feature pending release).
-2. Configure the Dokploy production app to pull `ghcr.io/prochattools/boilerplate-main:main-latest`.
-3. Set preview deployments to pull tags like `ghcr.io/prochattools/boilerplate-main:feature-branchname-latest`.
-4. Remove the Dokploy Nixpacks build configuration once image-only deployments are verified.
-5. Confirm GitHub workflow secrets (e.g., `GHCR_PAT`) remain valid and images push successfully.
-6. Remove this migration section after the transition is complete.
+   Open your browser at:
 
-## Setup for New Projects
+   ```
+   http://mynewapp.localhost:3000
+   ```
 
-With every new Project
-1. Copy the boilerplate as a new project
-2. Change the name of the project
-3. update the /.env
-4. create the products in stripe
-5. update the /src.config.ts with the priceid's from stripe
-6. Follow the [Git + Dokploy workflow](./docs/git-workflow.md) for all development
+   The app detects the subdomain, fetches credentials from the tenant registry, and connects to the correct database schema directly.
 
-## Release notes
+#### ✅ Summary
 
-17 sep: this is the [MASTER] boilerplate. It is a copy of the original optimized to work with [Dokploy] and Supabase [Cloud]. In the docker yaml DOCKER_USERNAME and DOCKER_SECRET have been removed. This boilerplate is NOT optimised to run locally with Docker.
-test deploy Thu Sep 25 20:45:36 WEST 2025
-test deploy Thu Sep 25 20:47:56 WEST 2025
-Testing PR deployment at Fri Sep 26 11:25:25 WEST 2025
+With Docker running locally, any new project based on this boilerplate will:
 
-# 🚀 SaaS Launch Guide with PR Preview DBs
+1. Spin up a new schema and user automatically.
+2. Run all Prisma migrations via `npx prisma migrate deploy --schema=prisma/system.prisma`.
+3. Register itself in the global tenant registry.
+4. Be ready to run locally or on Supabase in production without manual database setup.
 
-This boilerplate now provisions **unique Supabase databases for each project and PR**.  
+In production deployments, the `.env.production` file is used automatically, and Codex connects through the MCP bridge to provision and manage your database securely. The SaaS app connects directly to Supabase for runtime database access.
 
-## ✅ Main Deployments
-- Run ./scripts/provision-saas.sh <app-name> <domain>
-- Creates Supabase project + DB.
-- Injects DATABASE_URL, ANON_KEY, SERVICE_ROLE_KEY into .env.
-- Runs `npx prisma migrate deploy` locally to prepare DB.
-- Creates DNS record via Cloudflare + triggers Dokploy deploy.
+#### 🔄 Keeping Schemas in Sync
 
-## ✅ PR Preview Deployments
-- When a PR is opened → script provisions a new Supabase DB + injects secrets into Dokploy preview env.
-- Dokploy deploys preview app with that DB.
-- When PR is closed → script destroys preview DB + cleans secrets.
+Once a tenant is provisioned, Codex reuses the existing `DATABASE_URL` from `.env` and `.env.production` for all future schema updates. This ensures smooth and consistent management of database schemas across environments.
 
-Important: This repo is the golden SaaS boilerplate. Don’t build real products directly in this repo — always create a new repo from it.
+The typical workflow for making schema changes is:
+
+- Run `npx prisma migrate dev` locally to create and test migrations during development.
+- Push your changes to production; Codex then automatically runs `npx prisma migrate deploy` on Supabase through the MCP bridge to apply the migrations.
+
+This process keeps database schemas (structure) in sync between development and production, but note that data itself is not synchronized.
+
+##### Under the hood
+
+Codex automatically detects the current environment (development or production) and reuses existing tenant URLs without recreating tenants. This avoids redundant provisioning and ensures efficient schema management across deployments.
+
+---
+
+## Boilerplate Architecture Reference
+
+This boilerplate uses:
+
+- Next.js App Router  
+- Clerk authentication  
+- Stripe billing  
+- Multi‑tenant Postgres via Prisma  
+- Supabase in production  
+- Codex‑driven provisioning  
+- n8n/Make automation support  
+- Tailwind + shadcn UI  
+- A full dashboard and marketing system
+
+**Codex and all AI tools must always reference the folder tree stored in:**
+
+```
+GPT5_SaaS_Builder_Reference_Document_v2.md → Appendix: Boilerplate File Structure Snapshot
+```
+
+This ensures correct file placement, prevents architectural drift, and keeps the ProChat MicroSaaS Fast Boilerplate consistent across apps.
