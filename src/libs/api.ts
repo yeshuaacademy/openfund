@@ -1,8 +1,16 @@
-const rawApiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-const API_BASE_URL =
-  rawApiBase && rawApiBase.length > 0
-    ? rawApiBase.replace(/\/+$/, '')
-    : 'http://localhost:4000';
+const rawEnvBase = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+const resolveApiBaseUrl = (): string => {
+  if (rawEnvBase && rawEnvBase.length > 0) {
+    return rawEnvBase.replace(/\/+$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/+$/, '');
+  }
+  return 'http://localhost:4000';
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 const DEFAULT_USER_ID = process.env.NEXT_PUBLIC_API_USER_ID ?? 'demo-user';
 
 const getApiUrl = (path: string): string => {
