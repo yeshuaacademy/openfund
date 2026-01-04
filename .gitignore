@@ -41,3 +41,4 @@ public/sitemap.xml
 public/sitemap-0.xml
 # build artifacts
 dist/
+_brain
