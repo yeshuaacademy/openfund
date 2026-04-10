@@ -53,10 +53,10 @@ const localDbUrl = requireEnv("DATABASE_URL");
 
 const schemaName =
   getSchemaFromUrl(localDbUrl) ||
-  process.env.TENANT_SLUG ||
+  process.env.DATABASE_SCHEMA ||
   (() => {
     throw new Error(
-      "Unable to determine target schema; set ?schema=... on DATABASE_URL or TENANT_SLUG.",
+      "Unable to determine target schema; set ?schema=... on DATABASE_URL or DATABASE_SCHEMA.",
     );
   })();
 const schemaIdent = quoteIdent(schemaName);

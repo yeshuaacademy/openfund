@@ -290,7 +290,7 @@ function LedgerPageContent() {
     const blob = await response.blob();
     const contentDisposition = response.headers.get('content-disposition') ?? '';
     const match = contentDisposition.match(/filename="?([^\";]+)"?/i);
-    const fallbackName = `openfund-ledger-backup-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const fallbackName = `finance-admin-ledger-backup-${new Date().toISOString().slice(0, 10)}.xlsx`;
     const filename = match?.[1] ?? fallbackName;
     const mimeType =
       response.headers.get('content-type') ??

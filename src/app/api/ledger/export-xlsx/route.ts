@@ -171,7 +171,7 @@ export async function GET(request: Request) {
   return new NextResponse(buffer, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="openfund-ledger-backup-${today}.xlsx"`,
+      'Content-Disposition': `attachment; filename="finance-admin-ledger-backup-${today}.xlsx"`,
     },
   });
 }

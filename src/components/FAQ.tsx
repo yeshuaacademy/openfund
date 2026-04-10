@@ -15,32 +15,32 @@ const StaticData = {
 	faqs: [
 		{
 			id: 1,
-			question: "Is OpenFund an accounting tool?",
+			question: "What is Finance Admin?",
 			answer:
-				"It is not bookkeeping software. OpenFund delivers financial insight and transparency alongside your existing accounting stack.",
+				"Finance Admin is Yeshua Academy&apos;s internal finance workspace for ledger imports, categorization review, reconciliation, and account oversight.",
 		},
 		{
 			id: 2,
-			question: "Can I use it for multiple projects or funds?",
-			answer: "Yes. You can create and track multiple accounts or fundraisers separately inside OpenFund.",
+			question: "Does it support multiple accounts?",
+			answer: "Yes. You can keep separate accounts and balances inside one shared finance workspace.",
 		},
 		{
 			id: 3,
-			question: "Can I share my financial overview publicly?",
+			question: "Is this a public donor portal?",
 			answer:
-				"Absolutely. Each account can publish a secure public page that shows donors exactly how funds are raised and spent.",
+				"No. This application is an internal finance administration tool for Yeshua Academy, not a public fundraising or donor-facing product.",
 		},
 		{
 			id: 4,
 			question: "Where does my data come from?",
 			answer:
-				"You upload your bank statements or ledger CSV files. OpenFund ingests and categorizes the transactions automatically.",
+				"You upload bank statements or ledger files, and the system imports, categorizes, and prepares them for review.",
 		},
 		{
 			id: 5,
 			question: "Do I need accounting experience?",
 			answer:
-				"Not at all. OpenFund is built for everyday teams running real community work, not accountants.",
+				"Not necessarily. The workflow is designed to make finance administration easier for the internal team, with review and reconciliation built into the app.",
 		},
 	],
 };

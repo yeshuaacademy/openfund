@@ -21,10 +21,10 @@ const mcpSecret = requireEnv("MCP_SECRET");
 
 const schemaName =
   getSchemaFromUrl(localDbUrl) ||
-  process.env.TENANT_SLUG ||
+  process.env.DATABASE_SCHEMA ||
   (() => {
     throw new Error(
-      "Unable to determine target schema; set ?schema=... on DATABASE_URL or TENANT_SLUG."
+      "Unable to determine target schema; set ?schema=... on DATABASE_URL or DATABASE_SCHEMA."
     );
   })();
 
@@ -263,13 +263,21 @@ function requireEnv(key) {
 }
 
 async function grantSchemaPrivileges(schema) {
-  console.log(`🛰️  Granting privileges on schema "${schema}" to tenant_openfund_user`);
+  const databaseUrl = normalizeUrl(requireEnv("DATABASE_URL"));
+  const parsed = new URL(databaseUrl);
+  const databaseUser = decodeURIComponent(parsed.username || "");
+
+  if (!databaseUser) {
+    throw new Error("Unable to determine database user from DATABASE_URL.");
+  }
+
+  console.log(`🛰️  Granting privileges on schema "${schema}" to ${databaseUser}`);
 
   const sql = `
-GRANT USAGE ON SCHEMA ${quoteIdent(schema)} TO tenant_openfund_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${quoteIdent(schema)} TO tenant_openfund_user;
+GRANT USAGE ON SCHEMA ${quoteIdent(schema)} TO ${quoteIdent(databaseUser)};
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${quoteIdent(schema)} TO ${quoteIdent(databaseUser)};
 ALTER DEFAULT PRIVILEGES IN SCHEMA ${quoteIdent(schema)}
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO tenant_openfund_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${quoteIdent(databaseUser)};
 `;
 
   await executeSqlViaMcp(sql, { label: `grant privileges for ${schema}` });

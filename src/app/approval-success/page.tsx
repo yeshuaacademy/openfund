@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Access Approved | OpenFund",
+  title: "Access Approved | Yeshua Academy Finance",
 };
 
 const ApprovalSuccessPage = () => (
@@ -17,7 +17,7 @@ const ApprovalSuccessPage = () => (
         href="/"
         className="mt-8 inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:scale-[1.02]"
       >
-        Back to OpenFund
+        Back to Finance Admin
       </a>
     </div>
   </main>

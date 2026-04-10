@@ -262,8 +262,8 @@ const LoginPayment = ({ user }: any) => {
                       href={
                         index === 0 && user?.stripeEmail
                           ? user?.amountPaid === "247"
-                            ? "https://github.com/OpenFund/boilerplate-advanced"
-                            : "https://github.com/OpenFund/boilerplate-basic"
+                            ? "https://github.com/yeshuaacademy/finance"
+                            : "https://github.com/yeshuaacademy/finance"
                           : item?.link
                       }
                       target="_blank"

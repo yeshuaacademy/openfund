@@ -3,12 +3,12 @@ import themes from 'daisyui/src/theming/themes'
 
 const config: ConfigProps = {
 	// REQUIRED
-	appName: 'OpenFund',
+	appName: 'Yeshua Academy Finance',
 	// REQUIRED: a short description of your app for SEO tags (can be overwritten)
 	appDescription:
-		'The NextJS boilerplate with all you need to build your SaaS, AI tool, or any other web app.',
+		'Finance Admin for Yeshua Academy: ledger imports, reconciliation, review queues, and account oversight.',
 	// REQUIRED (no https://, not trialing slash at the end, just the naked domain)
-	domainName: 'website.name',
+	domainName: 'finance.yeshua.academy',
 	stripe: {
 		// Create multiple products in your Stripe dashboard, then add them here. You can add as many plans as you want, just make sure to add the priceId
 		products: [
@@ -65,13 +65,13 @@ const config: ConfigProps = {
 	},
 	resend: {
 		// REQUIRED — Email 'From' field to be used when sending other emails, like abandoned carts, updates etc..
-		fromAdmin: 'OpenFund <noreply@openfund.yeshua.academy>',
+		fromAdmin: 'Yeshua Academy Finance <info@yeshua.academy>',
 		// Email shown to customer if need support. Leave empty if not needed => if empty, set up Crisp above, otherwise you won't be able to offer customer support."
-		supportEmail: 'support@openfund.yeshua.academy',
+		supportEmail: 'info@yeshua.academy',
 		// When someone replies to supportEmail sent by the app, forward it to the email below (otherwise it's lost). If you set supportEmail to empty, this will be ignored.
 		forwardRepliesTo: 'info@yeshua.academy',
 		subjects: {
-			thankYou: 'Welcome to OpenFund',
+			thankYou: 'Welcome to Yeshua Academy Finance',
 		},
 	},
 }

@@ -141,7 +141,7 @@ const Pricing = () => {
         <div className="mx-auto max-w-[620px] text-center">
           <Heading
             title="Pricing"
-            desc="OpenFund grows with your mission -- start free and scale transparency when you are ready."
+            desc="Yeshua Academy Finance is being repositioned as an internal finance workspace, and this pricing section is slated for removal."
             maxWidth={520}
           />
         </div>

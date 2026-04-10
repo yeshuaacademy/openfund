@@ -82,7 +82,7 @@ const buildExportIntro = (context?: ExportEmailContext): string => {
 
 const buildClosingHtml = () => {
   return `
-    <p style="margin-top:24px;">Thank you for using OpenFund.</p>
+    <p style="margin-top:24px;">Thank you for using Yeshua Academy Finance.</p>
     <p>If you have any questions, you can reply to this email or contact Steve at <a href="mailto:Steve@yeshua.academy">Steve@yeshua.academy</a>.</p>
   `;
 };

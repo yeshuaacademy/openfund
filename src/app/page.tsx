@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Features from "@/components/Features";
-import Pricing from "@/components/Pricing";
 import Faq from "@/components/FAQ";
 import Footer from "@/components/Footer";
 import Comparison from "@/components/Comparison";
@@ -15,9 +14,8 @@ export default function Home() {
       </Suspense>
       <main>
         <Hero />
-      <Comparison/>
+        <Comparison />
         <Features />
-        <Pricing />
         <Faq />
       </main>
       <Footer />

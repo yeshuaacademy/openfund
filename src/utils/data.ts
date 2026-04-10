@@ -1716,7 +1716,7 @@ export const faqData = [
   {
     question: "License & Code Ownership",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
       "This tool can be easily run even by person with 0 coding knowledge. Just follow the documentation and video guide.",
       "It supports App Router and the code base is in TypeScript. You also get access to the public documentation to get started and that explains in details how to use and modify features (auth, payments, etc), how to use the different components, and how to deploy your app.",
       "Finally, you get access to the private Discord community where makers are building and launching new products. And free updates.",
@@ -1725,49 +1725,49 @@ export const faqData = [
   {
     question: "What do I get?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
   {
     question: "My tech stack is different, can I still use it?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
   {
     question: "I do not know how to code. Can I use it?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
   {
     question: "Is it a template?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
   {
     question: "Why is your boilerplate better than your competitors?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
   {
     question: "Are there any hidden costs?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
   {
     question: "Can I get a refund?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
   {
-    question: "How often OpenFund updated?",
+    question: "How often is Yeshua Academy Finance updated?",
     answer: [
-      "OpenFund is a one-time-purchase that will give you lifetime access to the GitHub repository that contains the Next.js 14 SaaS starter kit (boilerplate code) with all you need to run your micro SaaS, startup or AI tool online.",
+      "Yeshua Academy Finance is being converted away from its original boilerplate and sales messaging into a dedicated internal finance workspace.",
     ],
   },
 ];

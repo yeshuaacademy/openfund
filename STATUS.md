@@ -1,4 +1,4 @@
-# Status – openfund (Step 2)
+# Status – Yeshua Academy Finance (Step 2)
 
 ## Architecture Overview
 

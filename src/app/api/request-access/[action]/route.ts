@@ -78,17 +78,17 @@ export async function GET(
         {
           from: fromAddress,
           to: [email],
-          subject: "Your OpenFund access has been approved",
+          subject: "Your Finance Admin access has been approved",
           replyTo: process.env.ADMIN_EMAIL,
           text: `Hi ${buildFriendlyName(
             payload
-          )},\n\nYour access request has been approved. You can finish creating your account at ${appUrl}/sign-up.\n\n— OpenFund Team`,
+          )},\n\nYour access request has been approved. You can finish creating your account at ${appUrl}/sign-up.\n\n— Finance Admin`,
           html: `
             <div style="font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.6; color:#0f172a;">
               <p>Hi ${buildFriendlyName(payload)},</p>
-              <p>Your OpenFund access request has been approved. Use the link below to complete sign-up:</p>
+              <p>Your Finance Admin access request has been approved. Use the link below to complete sign-up:</p>
               <p><a href="${appUrl}/sign-up" style="color:#5D5AF6; font-weight:600;">Complete sign-up</a></p>
-              <p>We’re excited to partner with you.<br/>— The OpenFund Team</p>
+              <p>You can now continue into Yeshua Academy Finance.<br/>— Finance Admin</p>
             </div>
           `,
         },
@@ -106,7 +106,7 @@ export async function GET(
       {
         from: fromAddress,
         to: [email],
-        subject: "OpenFund access decision",
+        subject: "Finance Admin access decision",
         text: `Your request has been denied, if you feel that this is the wrong decision please email us at info@yeshua.academy.`,
         html: `
           <div style="font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.6; color:#0f172a;">

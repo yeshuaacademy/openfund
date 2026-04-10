@@ -55,7 +55,7 @@ export const getSEOTags = ({
       // If you add an twitter-image.(jpg|jpeg|png|gif) image to the /app folder, you don't need the code below
       // images: [openGraph?.image || defaults.og.image],
       card: "summary_large_image",
-      creator: "@dennis_babych",
+      creator: "@yeshuaacademy",
     },
     // If a canonical URL is given, we add it. The metadataBase will turn the relative URL into a fully qualified URL
     ...(canonicalUrlRelative && {
@@ -81,29 +81,17 @@ export const renderSchemaTags = () => {
       dangerouslySetInnerHTML={{
         __html: JSON.stringify({
           "@context": "http://schema.org",
-          "@type": "SoftwareApplication",
+          "@type": "WebApplication",
           name: config.appName,
           description: config.appDescription,
           image: `https://${config.domainName}/icon.png`,
           url: `https://${config.domainName}/`,
           author: {
-            "@type": "Person",
-            name: "Dennis Babych",
+            "@type": "Organization",
+            name: "Yeshua Academy",
           },
           datePublished: "2023-08-01",
-          applicationCategory: "EducationalApplication",
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: "4.8",
-            ratingCount: "12",
-          },
-          offers: [
-            {
-              "@type": "Offer",
-              price: "9.00",
-              priceCurrency: "USD",
-            },
-          ],
+          applicationCategory: "FinanceApplication",
         }),
       }}
     ></script>

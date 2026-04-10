@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       process.env.REQUEST_ACCESS_FROM ?? config.resend.fromAdmin;
 
     const plainText = [
-      "A new OpenFund access request has been submitted.",
+      "A new Yeshua Academy Finance access request has been submitted.",
       `Name: ${name}`,
       `Email: ${email}`,
       role ? `Role: ${role}` : "",
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.5; color: #0f172a;">
-        <h2 style="margin-bottom: 16px;">New OpenFund access request</h2>
+        <h2 style="margin-bottom: 16px;">New Yeshua Academy Finance access request</h2>
         <p style="margin-bottom: 12px;">A visitor submitted the request form. Details:</p>
         <ul style="padding-left: 20px; margin-bottom: 16px;">
           <li><strong>Name:</strong> ${name}</li>
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         from: fromAddress,
         replyTo: email,
         to: [adminEmail],
-        subject: "New OpenFund access request",
+        subject: "New Yeshua Academy Finance access request",
         text: plainText,
         html,
       },

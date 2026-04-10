@@ -1,16 +1,16 @@
-# Codex Tenant Cleanup
+# Legacy Database Cleanup
 
-When Codex is asked to drop a tenant (e.g. “drop tenant <slug>”), it should perform the following SQL actions in sequence.  
-Each step ensures that the tenant’s data, role, and registry entry are completely removed from the system.
+This repository previously used tenant-style naming inherited from an old boilerplate.
 
-Bash
-codex "drop tenant <slug> using instructions from codex-tenant-cleanup.md"
+For Yeshua Academy Finance, cleanup means removing legacy `openfund` resources only after the new standalone deployment has been verified:
 
----
+1. Confirm `finance.yeshua.academy` is healthy.
+2. Confirm production runtime points to `finance.finance`.
+3. Confirm row counts and key tables match the migrated data.
+4. Only then consider removing legacy resources such as:
+   - old DNS record `openfund.yeshua.academy`
+   - legacy database `openfund`
+   - legacy role `openfund_user`
+   - unused legacy schema `ya_finance_schema`
 
-## 1️⃣ Drop the tenant’s schema
-
-Remove all tenant-specific tables and data safely.
-
-```sql
-DROP SCHEMA IF EXISTS tenant_<slug> CASCADE;
+Do not remove legacy resources before verification.

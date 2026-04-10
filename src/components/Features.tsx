@@ -4,21 +4,21 @@ import { Auth, Blog, Email, Landing, Payment, Seo } from "@/icons";
 const data = [
   {
     icon: <Landing />,
-    title: "Visual Fund Transparency",
-    desc: "Instantly see income and expenses per project, event, or ministry. Clear graphs that tell your financial story - not just numbers.",
+    title: "Ledger Overview",
+    desc: "Track income, expenses, balances, and account-level performance from one internal finance workspace.",
     features: [
-      "Live dashboards for every fund, project, or ministry",
-      "Instant comparisons of income versus expenses",
-      "Share-ready visuals for board and donor updates",
+      "Monthly overview, transactions, and cash flow views",
+      "Per-account balances and running totals",
+      "Exports ready for internal reporting and review",
     ],
-    time: "LIVE TRANSPARENCY",
+    time: "FINANCE DASHBOARD",
   },
   {
     icon: <Auth />,
     title: "Automated Ledger Imports",
-    desc: "Drop in your monthly bank CSV. OpenFund auto-categorizes and matches your transactions - no manual entry needed.",
+    desc: "Drop in monthly bank files and let Finance Admin prepare the ledger with minimal manual work.",
     features: [
-      "Upload statements once and let OpenFund handle the matching",
+      "Upload statements once and let the import pipeline handle matching",
       "Automatic reconciliation across all of your accounts",
       "Spot exceptions instantly without combing through rows",
     ],
@@ -37,14 +37,14 @@ const data = [
   },
   {
     icon: <Payment />,
-    title: "Shareable Transparency Pages",
-    desc: "Generate secure public pages for fundraisers like 'Vila Solidaria'. Show donors the live breakdown of funds raised and spent.",
+    title: "Reconciliation Workflow",
+    desc: "Lock opening balances, reconcile periods, and keep completed months protected from accidental edits.",
     features: [
-      "Launch donor-facing pages with live raised vs. spent totals",
-      "Control access with secure sharing links",
-      "Embed updates anywhere to keep supporters informed",
+      "Period locks after reconciliation",
+      "Clear review queue for uncategorized transactions",
+      "Status signals for balanced and pending work",
     ],
-    time: "TRUST AT A GLANCE",
+    time: "CLOSE THE BOOKS",
   },
   {
     icon: <Seo />,
@@ -80,8 +80,8 @@ const Features = () => {
       <div className="relative z-10 mx-auto w-full max-w-[1200px]">
         <div className="mx-auto mb-20 max-w-[640px] text-center">
           <Heading
-            title="What You'll Get With OpenFund"
-            desc="Designed for those who give - helping you focus on your mission while OpenFund handles the numbers."
+            title="What Finance Admin Handles"
+            desc="Purpose-built for Yeshua Academy finance operations: imports, categorization, reconciliation, and ledger oversight."
           />
         </div>
         <div className="grid gap-10 sm:grid-cols-2">

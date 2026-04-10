@@ -15,7 +15,7 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from '@/components/ui/sheet'
-import { Auth, Demo, Document, Info, Moon, OpenNav, Pricing, Question, RightArrow, Sun } from '@/icons'
+import { Auth, Demo, Document, Info, Moon, OpenNav, Question, RightArrow, Sun } from '@/icons'
 import { ScrollToSection } from '@/utils/scroll-to-section'
 import { useUser } from '@/utils/clerkClient'
 import { AUTH_ENABLED } from '@/utils/auth'
@@ -206,18 +206,18 @@ const MobileNav = ({
 					tabIndex={0}
 					onClick={() => {
 						setIsOpen(false)
-						ScrollToSection('pricing')
+						onRequestAccess()
 					}}
 					onKeyDown={(event) => {
 						if (event.key === 'Enter' || event.key === ' ') {
 							event.preventDefault()
 							setIsOpen(false)
-							ScrollToSection('pricing')
+							onRequestAccess()
 						}
 					}}
 					className='mb-8 mx-auto w-fit outline-none'
 				>
-					<IconButton text='Get OpenFund' icon={<RightArrow />} isSubmit={false} />
+					<IconButton text='Open Finance Admin' icon={<RightArrow />} isSubmit={false} />
 				</div>
 			</SheetContent>
 		</Sheet>
@@ -252,13 +252,6 @@ const Header = () => {
 				title: 'What',
 				link: '/#what',
 				sectionId: 'what',
-			},
-			{
-				id: 'pricing',
-				icon: <Pricing />,
-				title: 'Pricing',
-				link: '/#pricing',
-				sectionId: 'pricing',
 			},
 			{
 				id: 'faq',
@@ -447,7 +440,7 @@ const RequestAccessDialog = ({
 							required
 							value={reason}
 							onChange={handleReasonChange}
-							placeholder='Let us know how OpenFund will support your mission.'
+							placeholder='Let us know why you need access to Finance Admin.'
 							className='min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus-visible:border-[#5D5AF6] focus-visible:ring-2 focus-visible:ring-[#5D5AF6]/30 dark:border-white/15 dark:bg-white/5 dark:text-white/80 dark:focus-visible:border-[#5D5AF6] dark:focus-visible:ring-[#5D5AF6]/40'
 						/>
 					</div>

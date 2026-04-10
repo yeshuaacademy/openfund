@@ -186,7 +186,7 @@ const WaitingListHero = () => {
 									className='border border-[#86898E] dark:border-[#5A5E66] w-full py-2 text-[#B7B8BB] dark:text-[#4D525A] placeholder-[#B7B8BB] dark:placeholder-[#4D525A] rounded-[8px] px-3 text-base font-medium bg-transparent'
 								/>
 								<div className='w-fit'>
-									<IconButton text='Get OpenFund' isIcon={true} />
+									<IconButton text='Open Finance Admin' isIcon={true} />
 								</div>
 							</div>
 						</form>

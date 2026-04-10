@@ -83,29 +83,29 @@ const Hero = () => {
 				<div className='relative z-10 w-full max-w-xl space-y-8'>
 					<div className='inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600 shadow-sm backdrop-blur-xl dark:border-white/20 dark:bg-white/10 dark:text-white/70'>
 						<span className='inline-flex h-2 w-2 rounded-full bg-[#62f9ff]' />
-						Real-time Financial Insights
+						Yeshua Academy Finance
 					</div>
 					<h1 className='text-4xl font-semibold leading-[1.05] text-slate-900 sm:text-5xl lg:text-[3.5rem] dark:text-white'>
-						See where the money goes.{' '}
+						Internal ledger operations,{' '}
 						<span className='bg-gradient-to-r from-[#7A7AFF] via-[#61D0FF] to-[#7A7AFF] bg-clip-text text-transparent'>
-							Build trust. Save hours.
+							reconciliation, and review.
 						</span>
 					</h1>
 					<p className='text-base text-slate-700 sm:text-lg dark:text-white/70'>
-						OpenFund turns your financial data into clear, visual insights — so your
-						community knows exactly how their donations make an impact.
+						Finance Admin is Yeshua Academy&apos;s internal finance workspace for importing bank
+						statements, reconciling accounts, reviewing categorization, and keeping the ledger clean.
 					</p>
 					<div className='flex flex-col items-start gap-4 sm:flex-row sm:items-center'>
 						<div className='w-full sm:w-auto'>
-							<IconButton text='Get OpenFund' icon={<RightArrow />} />
+							<IconButton text='Open Finance Admin' icon={<RightArrow />} />
 						</div>
 						<button className='inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 ease-out hover:border-slate-300 hover:bg-white dark:border-white/20 dark:bg-white/5 dark:text-white/80 dark:hover:border-white/40 dark:hover:bg-white/10'>
-							<span>View live demo</span>
+							<span>Request access</span>
 							<RightArrow />
 						</button>
 					</div>
 						<p className='text-xs font-semibold uppercase tracking-[0.4em] text-slate-500 dark:text-white/60'>
-							Visualize your organization’s impact in minutes
+							Yeshua Academy internal finance operations
 						</p>
 					<TestimonialsAvatars priority />
 				</div>
@@ -130,12 +130,12 @@ const Hero = () => {
 						/>
 						<div className='mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2'>
 							<div className='rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm backdrop-blur-xl dark:border-white/20 dark:bg-[#060F1F]/90 dark:text-white/85'>
-								<p className='text-xs uppercase tracking-[0.3em] text-slate-600 dark:text-white/60'>Response time</p>
-								<p className='mt-2 text-2xl font-semibold text-slate-900 dark:text-white'>1m 42s</p>
+								<p className='text-xs uppercase tracking-[0.3em] text-slate-600 dark:text-white/60'>Import cadence</p>
+								<p className='mt-2 text-2xl font-semibold text-slate-900 dark:text-white'>Monthly</p>
 							</div>
 							<div className='rounded-2xl border border-[#24C4FF]/40 bg-[#24C4FF]/12 px-5 py-4 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl dark:bg-[#24C4FF]/10 dark:text-white'>
-								<p className='text-xs uppercase tracking-[0.3em] text-slate-600 dark:text-white/70'>Donor satisfaction</p>
-								<p className='mt-2 text-2xl font-semibold text-slate-900 dark:text-white'>97%</p>
+								<p className='text-xs uppercase tracking-[0.3em] text-slate-600 dark:text-white/70'>Primary workspace</p>
+								<p className='mt-2 text-2xl font-semibold text-slate-900 dark:text-white'>Ledger</p>
 							</div>
 						</div>
 					</div>

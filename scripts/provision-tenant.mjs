@@ -28,11 +28,15 @@ const projectName =
   pkgJson.name ||
   "app";
 const projectSlug = slugify(projectName);
-const schemaName = `tenant_${projectSlug}`;
-const roleName = `${schemaName}_user`;
+const schemaName = projectSlug;
+const roleName = `${projectSlug}_user`;
 
 ensureIdentifier(schemaName, "schema");
 ensureIdentifier(roleName, "role");
+
+throw new Error(
+  "scripts/provision-tenant.mjs is disabled for Yeshua Academy Finance. This app now uses a standalone database model (finance / finance_user / finance schema), so the old schema-only provisioning flow must not be used."
+);
 
 const devAdminUrl = requireEnv("SYSTEM_DATABASE_URL");
 const prodManagerUrl =

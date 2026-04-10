@@ -33,7 +33,7 @@ const Logo = ({ isLarge = false, className, priority = false }: LogoProps) => {
         src={openfundLight}
         width={width}
         height={height}
-        alt="OpenFund logo"
+        alt="Yeshua Academy Finance logo"
         priority={priority}
         className="block dark:hidden"
       />
@@ -41,7 +41,7 @@ const Logo = ({ isLarge = false, className, priority = false }: LogoProps) => {
         src={openfundDark}
         width={width}
         height={height}
-        alt="OpenFund logo"
+        alt="Yeshua Academy Finance logo"
         priority={priority}
         className="hidden dark:block"
       />

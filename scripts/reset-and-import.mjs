@@ -27,7 +27,7 @@ const args = new Map(
 // ✅ File, range, and sheet
 const file =
   args.get("file") ||
-  "/Users/Steve/Documents/Development/Code/Projects/Private/openfund/sheets/Overzicht_Yeshua_Academy_Jun_2025.xlsx";
+  "/Users/Steve/Documents/Development/Code/Projects/Private/finance/sheets/Overzicht_Yeshua_Academy_Jun_2025.xlsx";
 const fromRow = Number(args.get("fromRow") || 2);
 const toRow = Number(args.get("toRow") || 225);
 const sheetName = "transacties 2025"; // ✅ fixed correct sheet name

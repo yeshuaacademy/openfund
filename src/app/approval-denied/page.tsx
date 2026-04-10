@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Access Denied | OpenFund",
+  title: "Access Denied | Yeshua Academy Finance",
 };
 
 const ApprovalDeniedPage = () => (
@@ -16,7 +16,7 @@ const ApprovalDeniedPage = () => (
         href="/"
         className="mt-8 inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:scale-[1.02]"
       >
-        Back to OpenFund
+        Back to Finance Admin
       </a>
     </div>
   </main>

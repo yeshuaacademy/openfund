@@ -19,11 +19,11 @@ const cards = [
       },
       {
         time: "+ 8 hrs",
-        text: "Donors constantly asking for transparency updates",
+        text: "Chasing missing categories and statement mismatches",
       },
       {
         time: "+ 4 hrs",
-        text: "No simple way to show where donations go",
+        text: "No clean monthly close workflow",
       },
       {
         time: "+ 12 hrs",
@@ -35,7 +35,7 @@ const cards = [
       },
       {
         time: "+ 2 hrs",
-        text: "No clear picture of how much impact each campaign actually has",
+        text: "No single source of truth for the finance team",
       },
     ],
     totalTime: "= 55 hours of PROBLEMS",
@@ -44,13 +44,13 @@ const cards = [
     isGreen: true,
     title: <Logo />,
     items: [
-      { text: "Automatically imports transactions from your bank" },
-      { text: "Categorizes every expense and donation" },
-      { text: "Gives clear dashboards that anyone can understand" },
-      { text: "Builds instant trust with your community" },
-      { text: "Keeps all accounts, funds, and projects synchronized in one place" },
-      { text: "Turns complex ledgers into easy, visual stories anyone can share" },
-      { text: "Saves hours every month - so you can focus on your mission, not spreadsheets" },
+      { text: "Automatically imports transactions from the bank" },
+      { text: "Flags only the entries that need manual review" },
+      { text: "Keeps reconciliation and running balances visible" },
+      { text: "Protects closed periods with ledger locks" },
+      { text: "Keeps all Yeshua Academy accounts in one workspace" },
+      { text: "Provides exports and summaries for internal reporting" },
+      { text: "Saves hours every month by reducing spreadsheet work" },
     ],
     totalTime: "= 17 min Setup",
   },
@@ -105,7 +105,7 @@ const Comparison = () => {
     <div id="why" className="flex justify-center items-center w-full bg-white dark:bg-[#010814] pt-12 pb-24">
       <div className="max-w-[1440px] w-full px-4 sm:px-12">
         <div className="max-w-[640px] mx-auto mb-12">
-          <Heading title="Why OpenFund Exists" desc="Nonprofits, fundraisers and churches handle funds with integrity - but explaining where it all goes is often a nightmare of spreadsheets, reports, and confusion." />
+          <Heading title="Why Finance Admin Exists" desc="Yeshua Academy needed a lean internal finance workspace for imports, reconciliation, and ledger review without the baggage of a sellable SaaS product." />
         </div>
         <div className="flex gap-8 items-center justify-center flex-col lg:flex-row">
           <ComparisonCard item={cards[0]} />

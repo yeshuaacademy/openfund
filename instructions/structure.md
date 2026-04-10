@@ -321,12 +321,12 @@ Codex must run:
 ```
 
 This script automatically:
-- Creates the tenant schema (`tenant_<slug>`)
-- Creates the Postgres user (`tenant_<slug>_user`)
+- Creates the standalone app database (for Finance: `finance`)
+- Creates the Postgres user (for Finance: `finance_user`)
 - Grants privileges
 - Writes the correct `DATABASE_URL` to `.env` and `.env.production`
 - Syncs system schema via Prisma migrations
-- Registers the environment with the MCP Bridge (for production DB access)
+- Prepares the environment for direct runtime access to the standalone app database
 
 ### ✔ Codex Automation Rules
 
